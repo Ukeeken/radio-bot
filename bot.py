@@ -322,14 +322,16 @@ async def post_scroller(song):
     )
 
     for guild in client.guilds:
+        print(f"CHECKING GUILD: {guild.name}")
 
         channel_id = radio_channels.get(str(guild.id))
+        print(f"CHANNEL ID: {channel_id}")
 
         if not channel_id:
             print(f"No setup for {guild.name}")
             continue
 
-        channel = client.get_channel(int(channel_id))
+        channel = await client.fetch_channel(int(channel_id))
 
         if not channel:
             print(f"Cannot find channel for {guild.name}")
