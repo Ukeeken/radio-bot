@@ -37,6 +37,10 @@ def request_song():
     <h2>✅ Request sent!</h2>
     <a href="/">Back</a>
     """
+@app.route("/requests")
+def get_requests():
+    return jsonify(song_requests)
+
 def run_web():
     app.run(host="0.0.0.0", port=8080)
 
