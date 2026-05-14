@@ -31,15 +31,8 @@ def request_song():
 
     if song:
         song_requests.append(song)
-        print("NEW REQUEST:", song)
 
-    return """
-    <h2>✅ Request sent!</h2>
-    <a href="/">Back</a>
-    """
-@app.route("/requests")
-def get_requests():
-    return jsonify(song_requests)
+    return "OK"
 
 def run_web():
     app.run(host="0.0.0.0", port=8080)
@@ -279,7 +272,22 @@ def create_embed(song, dj, album_art):
         value="[▶ Click Here To Listen](https://thechatbarcommunity.org/radio-player/)",
         inline=True
     )
+        # LIVE REQUESTS
+    if song_requests:
+        latest_requests = song_requests[-5:]  # last 5 requests
 
+        embed.add_field(
+            name="🎧 Live Requests",
+            value="\n".join(f"• {r}" for r in latest_requests),
+            inline=False
+        )
+    else:
+        embed.add_field(
+            name="🎧 Live Requests",
+            value="No requests yet 🎵",
+            inline=False
+        )
+        
     embed.set_thumbnail(
         url=album_art or BANNER_URL
     )
