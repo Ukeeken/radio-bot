@@ -1,1 +1,3 @@
 .env
+radio_channels.json
+__pycache__/
