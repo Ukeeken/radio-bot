@@ -1,3 +1,4 @@
+song_requests = []
 from dotenv import load_dotenv
 import os
 import spotipy
@@ -13,8 +14,6 @@ from flask import Flask, request, jsonify
 import threading
 
 app = Flask(__name__)
-
-song_requests = []
 
 @app.route("/")
 def home():
@@ -206,10 +205,11 @@ def get_now_playing():
 
             song = match.group(1).strip()
 
-            if song:
-                return song
+            if " - " in song:
+                artist, title = song.split(" - ", 1)
+                return artist.strip(), title.strip()
 
-        return None
+            return None, song
 
     except Exception as e:
 
@@ -253,11 +253,11 @@ def get_album_art(song_query):
 # CREATE EMBED
 # =========================
 
-def create_embed(song, dj, album_art):
+def create_embed(title, artist, dj, album_art):
 
     embed = discord.Embed(
         title="🔴 ON AIR • LIVE BROADCAST",
-        description=f"🎵 **{song}**",
+        description=f"🎵 **{title}**\n👤 {artist}",
         color=0xff0033
     )
 
@@ -287,7 +287,7 @@ def create_embed(song, dj, album_art):
             value="No requests yet 🎵",
             inline=False
         )
-        
+
     embed.set_thumbnail(
         url=album_art or BANNER_URL
     )
@@ -319,20 +319,16 @@ async def delete_old_message(guild_id):
 # POST SCROLLER
 # =========================
 
-async def post_scroller(song):
+async def post_scroller(artist, title):
 
     dj = get_current_dj()
 
     if not dj:
         return
 
-    album_art = get_album_art(song)
+    album_art = get_album_art(f"{artist} {title}")
 
-    embed = create_embed(
-        song,
-        dj,
-        album_art
-    )
+    embed = create_embed(title, artist, dj, album_art)
 
     for guild in client.guilds:
         print(f"CHECKING GUILD: {guild.name}")
@@ -493,15 +489,11 @@ async def song_loop():
 
             if current_dj:
 
-                song = get_now_playing()
+                artist, title = get_now_playing()
 
-                if song and song != last_song:
-
-                    print("New song:", song)
-
-                    last_song = song
-
-                    await post_scroller(song)
+                if title and title != last_song:
+                    last_song = title
+                    await post_scroller(artist, title)
 
             else:
 
