@@ -9,17 +9,37 @@ import requests
 import re
 from datetime import datetime
 import json
-from flask import Flask
+from flask import Flask, request, jsonify
 import threading
 
 app = Flask(__name__)
 
+song_requests = []
+
 @app.route("/")
 def home():
-    return "Radio Requests are live 🎵"
+    return """
+    <h1>🎧 Black Sheep Radio Requests</h1>
+    <form action="/request" method="POST">
+        <input name="song" placeholder="Enter song request" required>
+        <button type="submit">Send Request</button>
+    </form>
+    """
+@app.route("/request", methods=["POST"])
+def request_song():
+    song = request.form.get("song")
 
+    if song:
+        song_requests.append(song)
+        print("NEW REQUEST:", song)
+
+    return """
+    <h2>✅ Request sent!</h2>
+    <a href="/">Back</a>
+    """
 def run_web():
     app.run(host="0.0.0.0", port=8080)
+
 
 # =========================
 # LOAD ENV
@@ -112,7 +132,7 @@ class RequestView(discord.ui.View):
             discord.ui.Button(
                 label="🎵 Request Song",
                 style=discord.ButtonStyle.link,
-                url="worker-production-fc98.up.railway.app"
+                url="https://worker-production-fc98.up.railway.app"
             )
         )
 
