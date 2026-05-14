@@ -112,7 +112,7 @@ class RequestView(discord.ui.View):
             discord.ui.Button(
                 label="🎵 Request Song",
                 style=discord.ButtonStyle.link,
-                url="https://github.com/Ukeeken/radio-bot.git"
+                url="worker-production-fc98.up.railway.app"
             )
         )
 
