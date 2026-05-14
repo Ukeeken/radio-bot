@@ -156,7 +156,6 @@ def get_current_dj():
 # =========================
 
 def get_now_playing():
-
     try:
         response = requests.get(
             STREAM_URL,
@@ -171,38 +170,26 @@ def get_now_playing():
         metaint = response.headers.get("icy-metaint")
 
         if not metaint:
-            print("No icy-metaint header found")
             return "Unknown", "Unknown"
 
         metaint = int(metaint)
-
         stream = response.raw
 
-        # IMPORTANT: read EXACTLY metaint bytes safely
         audio_chunk = stream.read(metaint)
-
         if not audio_chunk:
             return "Unknown", "Unknown"
 
         meta_length_byte = stream.read(1)
-
         if not meta_length_byte:
             return "Unknown", "Unknown"
 
         meta_length = meta_length_byte[0] * 16
-
         if meta_length == 0:
             return "Unknown", "Unknown"
 
-        metadata = stream.read(meta_length).decode(
-            "utf-8",
-            errors="ignore"
-        )
-
-        print("RAW METADATA:", metadata)
+        metadata = stream.read(meta_length).decode("utf-8", errors="ignore")
 
         match = re.search(r"StreamTitle='(.*?)';", metadata)
-
         if not match:
             return "Unknown", "Unknown"
 
@@ -211,23 +198,44 @@ def get_now_playing():
         if not raw:
             return "Unknown", "Unknown"
 
-        # CLEAN weird nulls/spaces
+        # cleanup junk
         raw = raw.replace("\x00", "").strip()
 
-        # Normalize separators
+        # normalize separators
         raw = raw.replace(" – ", " - ").replace(" — ", " - ")
 
-        # Split artist/title safely
+        # split safely
         if " - " in raw:
             artist, title = raw.split(" - ", 1)
             return artist.strip(), title.strip()
 
-        # fallback: no artist
         return "Live365", raw
 
     except Exception as e:
         print("STREAM ERROR:", repr(e))
         return "Unknown", "Unknown"
+
+def spotify_enrich(artist, title):
+
+    try:
+        query = f"{artist} {title}".strip()
+
+        results = sp.search(q=query, type="track", limit=1)
+
+        items = results["tracks"]["items"]
+
+        if not items:
+            return artist, title
+
+        track = items[0]
+
+        spotify_artist = track["artists"][0]["name"]
+        spotify_title = track["name"]
+
+        return spotify_artist, spotify_title
+
+    except:
+        return artist, title
 
 # =========================
 # SPOTIFY ALBUM ART
@@ -501,8 +509,17 @@ async def song_loop():
 
                 artist, title = get_now_playing()
 
-                if title and title != last_song:
-                    last_song = title
+                # only enrich if we got something usable
+                if title == "Unknown":
+                    return
+
+# optional enrichment (safe fallback)
+                artist, title = spotify_enrich(artist, title)
+
+                song_key = f"{artist} - {title}"
+
+                if song_key != last_song:
+                    last_song = song_key
                     await post_scroller(artist, title)
 
             else:
