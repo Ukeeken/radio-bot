@@ -97,7 +97,7 @@ loop_started = False
 
 def save_channels():
     with open("radio_channels.json", "w") as f:
-        json.dump(radio_channels, f)
+        json.dump(radio_channels, f, indent=4)
 
 def load_channels():
     global radio_channels
