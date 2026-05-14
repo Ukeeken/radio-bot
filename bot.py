@@ -63,6 +63,7 @@ if not DISCORD_TOKEN:
 
 STREAM_URL = "https://streaming.live365.com/a97529"
 BANNER_URL = "https://i.imgur.com/tdsxn4c.png"
+OWNER_ID = 1041766723717693450
 
 sp = spotipy.Spotify(
     auth_manager=SpotifyClientCredentials(
@@ -354,7 +355,7 @@ async def post_scroller(song):
 
         except Exception as e:
 
-            print(f"ERROR in {guild.name}")
+            print("STREAM ERROR")
             print(type(e))
             print(e)
 
@@ -384,7 +385,10 @@ async def setup_radio(
     channel: discord.TextChannel
 ):
 
-    if not interaction.user.guild_permissions.administrator:
+    if (
+        not interaction.user.guild_permissions.administrator
+        and interaction.user.id != OWNER_ID
+    ):
 
         await interaction.response.send_message(
             "❌ Admin only.",
