@@ -158,9 +158,8 @@ def get_current_dj():
 def get_now_playing():
 
     try:
-
         response = requests.get(
-            "https://streaming.live365.com/a97529",
+            STREAM_URL,
             headers={
                 "Icy-MetaData": "1",
                 "User-Agent": "Mozilla/5.0"
@@ -169,47 +168,47 @@ def get_now_playing():
             timeout=10
         )
 
-        metaint_header = response.headers.get("icy-metaint")
-
-        if not metaint_header:
+        metaint = response.headers.get("icy-metaint")
+        if not metaint:
             print("No icy-metaint header found")
-            return None
+            return "Unknown", "Unknown"
 
-        metaint = int(metaint_header)
+        metaint = int(metaint)
 
         stream = response.raw
-
         stream.read(metaint)
 
         metadata_length = stream.read(1)
-
         if not metadata_length:
-            print("No metadata length")
-            return None
+            return "Unknown", "Unknown"
 
         metadata_length = metadata_length[0] * 16
 
-        metadata = stream.read(metadata_length).decode(
-            "utf-8",
-            errors="ignore"
-        )
+        metadata = stream.read(metadata_length).decode("utf-8", errors="ignore")
 
         print("RAW METADATA:", metadata)
 
-        match = re.search(
-            r"StreamTitle='([^']*)';",
-            metadata
-        )
+        match = re.search(r"StreamTitle='([^']*)';", metadata)
 
-        if match:
+        if not match:
+            return "Unknown", "Unknown"
 
-            song = match.group(1).strip()
+        raw = match.group(1).strip()
 
-            if " - " in song:
-                artist, title = song.split(" - ", 1)
-                return artist.strip(), title.strip()
+        if not raw:
+            return "Unknown", "Unknown"
 
-            return None, song
+        # Try to split artist - title
+        if " - " in raw:
+            artist, title = raw.split(" - ", 1)
+            return artist.strip(), title.strip()
+
+        # fallback: no artist provided
+        return "Live365", raw
+
+    except Exception as e:
+        print("STREAM ERROR:", e)
+        return "Unknown", "Unknown"
 
     except Exception as e:
 
