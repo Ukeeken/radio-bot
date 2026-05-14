@@ -411,19 +411,24 @@ async def dj_start(
 
     global manual_dj
     global last_song
+    global last_messages
 
     await interaction.response.defer(ephemeral=True)
 
     manual_dj = name
 
+    # FORCE repost to all servers
+    last_song = None
+
+    # Optional: clear cached messages
+    last_messages.clear()
+
     song = get_now_playing()
 
     print("CURRENT SONG:", song)
 
+    # Immediately post if song exists
     if song:
-
-        last_song = song
-
         await post_scroller(song)
 
     await interaction.followup.send(
