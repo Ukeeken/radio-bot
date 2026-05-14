@@ -395,6 +395,8 @@ async def setup_radio(
 
     save_channels()
 
+    print("SAVED CHANNELS:", radio_channels)
+
     await interaction.response.send_message(
         f"🎧 Radio channel set to {channel.mention}",
         ephemeral=True
