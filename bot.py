@@ -165,10 +165,11 @@ def get_now_playing():
                 "User-Agent": "Mozilla/5.0"
             },
             stream=True,
-            timeout=10
+            timeout=12
         )
 
         metaint = response.headers.get("icy-metaint")
+
         if not metaint:
             print("No icy-metaint header found")
             return "Unknown", "Unknown"
@@ -176,19 +177,31 @@ def get_now_playing():
         metaint = int(metaint)
 
         stream = response.raw
-        stream.read(metaint)
 
-        metadata_length = stream.read(1)
-        if not metadata_length:
+        # IMPORTANT: read EXACTLY metaint bytes safely
+        audio_chunk = stream.read(metaint)
+
+        if not audio_chunk:
             return "Unknown", "Unknown"
 
-        metadata_length = metadata_length[0] * 16
+        meta_length_byte = stream.read(1)
 
-        metadata = stream.read(metadata_length).decode("utf-8", errors="ignore")
+        if not meta_length_byte:
+            return "Unknown", "Unknown"
+
+        meta_length = meta_length_byte[0] * 16
+
+        if meta_length == 0:
+            return "Unknown", "Unknown"
+
+        metadata = stream.read(meta_length).decode(
+            "utf-8",
+            errors="ignore"
+        )
 
         print("RAW METADATA:", metadata)
 
-        match = re.search(r"StreamTitle='([^']*)';", metadata)
+        match = re.search(r"StreamTitle='(.*?)';", metadata)
 
         if not match:
             return "Unknown", "Unknown"
@@ -198,25 +211,23 @@ def get_now_playing():
         if not raw:
             return "Unknown", "Unknown"
 
-        # Try to split artist - title
+        # CLEAN weird nulls/spaces
+        raw = raw.replace("\x00", "").strip()
+
+        # Normalize separators
+        raw = raw.replace(" – ", " - ").replace(" — ", " - ")
+
+        # Split artist/title safely
         if " - " in raw:
             artist, title = raw.split(" - ", 1)
             return artist.strip(), title.strip()
 
-        # fallback: no artist provided
+        # fallback: no artist
         return "Live365", raw
 
     except Exception as e:
-        print("STREAM ERROR:", e)
+        print("STREAM ERROR:", repr(e))
         return "Unknown", "Unknown"
-
-    except Exception as e:
-
-        print(f"ERROR in {guild.name}")
-        print(type(e))
-        print(e)
-
-        return None
 
 # =========================
 # SPOTIFY ALBUM ART
