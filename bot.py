@@ -9,6 +9,17 @@ import requests
 import re
 from datetime import datetime
 import json
+from flask import Flask
+import threading
+
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "Radio Requests are live 🎵"
+
+def run_web():
+    app.run(host="0.0.0.0", port=8080)
 
 # =========================
 # LOAD ENV
@@ -472,6 +483,8 @@ async def on_ready():
     load_channels()
 
     client.add_view(RequestView())
+
+    threading.Thread(target=run_web).start()
 
     await tree.sync()
 
