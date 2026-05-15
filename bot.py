@@ -72,11 +72,6 @@ sp = spotipy.Spotify(
 # DJ SCHEDULE
 # =========================
 
-DJ_SCHEDULE = [
-    {"name": "DJ Kenny", "start_hour": 14, "end_hour": 16},
-    {"name": "DJ Chrissy", "start_hour": 16, "end_hour": 20},
-]
-
 manual_dj = None
 last_song = None
 
