@@ -57,7 +57,7 @@ if not DISCORD_TOKEN:
 # CONFIG
 # =========================
 
-STREAM_URL = "https://streaming.live365.com/a97529"
+STREAM_URL = "https://live365.com/station/Black-Sheep-Radio-a97529"
 BANNER_URL = "https://i.imgur.com/tdsxn4c.png"
 OWNER_ID = 1041766723717693450
 
