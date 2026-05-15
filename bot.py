@@ -27,17 +27,19 @@ def home():
 @app.route("/request", methods=["POST"])
 def request_song():
 
-    global requests_updated
+    global requests_updated, force_refresh
 
     song = request.form.get("song")
 
     if song:
         song_requests.append(song)
 
+        # keep last 3 requests
         if len(song_requests) > 3:
             song_requests[:] = song_requests[-3:]
 
-        requests_updated = True   # 👈 ADD THIS HERE
+        requests_updated = True
+        force_refresh = True   # 👈 forces scroller update
 
     return "OK"
 
@@ -91,6 +93,7 @@ manual_dj = None
 last_song = None
 
 requests_updated = False
+force_refresh = False
 
 # guild_id -> message
 last_messages = {}
@@ -386,21 +389,18 @@ async def delete_old_message(guild_id):
     channel_id = radio_channels.get(str(guild_id))
 
     if not channel_id:
-        print("NO CHANNEL FOUND FOR DELETE")
         return
 
     try:
+        channel = client.get_channel(int(channel_id))
 
-        channel = await client.fetch_channel(int(channel_id))
+        if channel is None:
+            channel = await client.fetch_channel(int(channel_id))
 
         msg = await channel.fetch_message(message_id)
-
         await msg.delete()
 
         print(f"Deleted old message in guild {guild_id}")
-
-    except discord.NotFound:
-        print("Old message already deleted")
 
     except Exception as e:
         print("Delete error:", e)
@@ -436,11 +436,10 @@ async def post_scroller(artist, title):
 
         try:
 
-            channel = await client.fetch_channel(int(channel_id))
+            channel = client.get_channel(int(channel_id))
 
-            if not channel:
-                print(f"Cannot find channel for {guild.name}")
-                continue
+            if channel is None:
+                channel = await client.fetch_channel(int(channel_id))
 
             await delete_old_message(guild.id)
 
@@ -617,9 +616,21 @@ async def song_loop():
 
                 song_key = f"{artist} - {title}"
 
-                if song_key != last_song or requests_updated:
+                global requests_updated, force_refresh
+
+                should_update = False
+
+                if song_key != last_song:
                     last_song = song_key
+                    should_update = True
+
+                # force update when requests change
+                if requests_updated or force_refresh:
+                    should_update = True
+
+                if should_update:
                     requests_updated = False
+                    force_refresh = False
                     await post_scroller(artist, title)
 
             else:
