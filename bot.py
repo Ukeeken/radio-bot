@@ -194,7 +194,7 @@ def get_now_playing():
             try:
                 raw = metadata.split("StreamTitle='")[1].split("';")[0]
             except:
-            pass
+                pass
 
         if not raw:
             return "Unknown", "Unknown"
