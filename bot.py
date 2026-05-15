@@ -618,36 +618,46 @@ async def on_ready():
 
     global loop_started
     global web_started
+    global song_task
 
-    load_channels()
+    try:
 
-    client.add_view(RequestView())
+        load_channels()
 
-    if not web_started:
+        client.add_view(RequestView())
 
-        threading.Thread(
-            target=run_web,
-            daemon=True
-        ).start()
+        if not web_started:
 
-        web_started = True
+            threading.Thread(
+                target=run_web,
+                daemon=True
+            ).start()
 
-    await tree.sync()
+            web_started = True
 
-    print("Slash commands synced")
-    
-    print(f"Logged in as {client.user}")
+        synced = await tree.sync()
 
-    print("Loaded radio channels:", radio_channels)
+        print(f"Synced {len(synced)} command(s)")
 
-    if not loop_started:
+        print(f"Logged in as {client.user}")
 
-        global song_task
+        print("Loaded radio channels:", radio_channels)
 
-        if song_task is None:
-            song_task = asyncio.create_task(song_loop())
+        if not loop_started:
 
-        loop_started = True
+            if song_task is None:
+                song_task = asyncio.create_task(song_loop())
+
+            loop_started = True
+
+            print("Song loop started")
+
+    except Exception as e:
+
+        import traceback
+
+        print("ON_READY ERROR:")
+        traceback.print_exc()
 
 @client.event
 async def on_disconnect():
@@ -656,6 +666,15 @@ async def on_disconnect():
 @client.event
 async def on_resumed():
     print("Discord session resumed") 
+
+@client.event
+async def on_error(event, *args, **kwargs):
+
+    import traceback
+
+    print(f"ERROR IN EVENT: {event}")
+
+    traceback.print_exc()
 
 import traceback
 
