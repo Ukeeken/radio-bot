@@ -26,10 +26,18 @@ def home():
     """
 @app.route("/request", methods=["POST"])
 def request_song():
+
+    global requests_updated
+
     song = request.form.get("song")
 
     if song:
         song_requests.append(song)
+
+        if len(song_requests) > 3:
+            song_requests[:] = song_requests[-3:]
+
+        requests_updated = True   # 👈 ADD THIS HERE
 
     return "OK"
 
@@ -81,6 +89,8 @@ DJ_SCHEDULE = [
 ]
 manual_dj = None
 last_song = None
+
+requests_updated = False
 
 # guild_id -> message
 last_messages = {}
@@ -607,8 +617,9 @@ async def song_loop():
 
                 song_key = f"{artist} - {title}"
 
-                if song_key != last_song:
+                if song_key != last_song or requests_updated:
                     last_song = song_key
+                    requests_updated = False
                     await post_scroller(artist, title)
 
             else:
