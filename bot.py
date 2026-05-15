@@ -409,22 +409,24 @@ async def post_scroller(artist, title):
     embed = create_embed(artist, title, dj, album_art)
 
     for guild in client.guilds:
+
         print(f"CHECKING GUILD: {guild.name}")
 
         channel_id = radio_channels.get(str(guild.id))
+
         print(f"CHANNEL ID: {channel_id}")
 
         if not channel_id:
             print(f"No setup for {guild.name}")
             continue
 
-        channel = await client.fetch_channel(int(channel_id))
-
-        if not channel:
-            print(f"Cannot find channel for {guild.name}")
-            continue
-
         try:
+
+            channel = await client.fetch_channel(int(channel_id))
+
+            if not channel:
+                print(f"Cannot find channel for {guild.name}")
+                continue
 
             await delete_old_message(guild.id)
 
@@ -498,10 +500,7 @@ async def setup_radio(
     name="dj_start",
     description="Start DJ session globally"
 )
-@tree.command(
-    name="dj_start",
-    description="Start DJ session globally"
-)
+
 async def dj_start(
     interaction: discord.Interaction,
     name: str
@@ -571,7 +570,7 @@ async def song_loop():
                     await asyncio.sleep(30)
                     continue
 
-# optional enrichment (safe fallback)
+                # optional enrichment (safe fallback)
                 artist, title = spotify_enrich(artist, title)
 
                 song_key = f"{artist} - {title}"
@@ -601,6 +600,7 @@ async def song_loop():
 async def on_ready():
 
     global loop_started
+    global web_started
 
     load_channels()
 
