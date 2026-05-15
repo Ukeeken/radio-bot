@@ -328,16 +328,33 @@ def create_embed(artist, title, dj, album_art):
 
 async def delete_old_message(guild_id):
 
-    old_msg = last_messages.get(guild_id)
+    message_id = last_messages.get(guild_id)
 
-    if old_msg:
+    if not message_id:
+        return
 
-        try:
-            await old_msg.delete()
-        except:
-            pass
+    channel_id = radio_channels.get(str(guild_id))
 
-        last_messages.pop(guild_id, None)
+    if not channel_id:
+        return
+
+    try:
+
+        channel = await client.fetch_channel(int(channel_id))
+
+        msg = await channel.fetch_message(message_id)
+
+        await msg.delete()
+
+        print(f"Deleted old message in guild {guild_id}")
+
+    except discord.NotFound:
+        print("Old message already deleted")
+
+    except Exception as e:
+        print("Delete error:", e)
+
+    last_messages.pop(guild_id, None)
 
 # =========================
 # POST SCROLLER
@@ -381,7 +398,7 @@ async def post_scroller(artist, title):
                 view=RequestView()
             )
 
-            last_messages[guild.id] = msg
+            last_messages[guild.id] = msg.id
 
             print(f"Posted in {guild.name}")
 
@@ -461,7 +478,6 @@ async def dj_start(
     last_song = None
 
     # Optional: clear cached messages
-    last_messages.clear()
 
     artist, title = get_now_playing()
 
