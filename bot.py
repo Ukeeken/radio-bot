@@ -407,7 +407,7 @@ async def post_scroller(artist, title):
     if not dj:
         return
 
-    album_art = get_album_art(f"{artist} {title}")
+    album_art = BANNER_URL
 
     embed = create_embed(artist, title, dj, album_art)
 
@@ -587,7 +587,7 @@ async def song_loop():
                     continue
 
                 # optional enrichment (safe fallback)
-                artist, title = spotify_enrich(artist, title)
+                # artist, title = spotify_enrich(artist, title)
 
                 song_key = f"{artist} - {title}"
 
