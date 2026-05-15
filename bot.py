@@ -561,6 +561,16 @@ async def dj_end(interaction: discord.Interaction):
         ephemeral=True
     )
 
+@tree.command(name="clear_requests", description="Clear song requests")
+async def clear_requests(interaction: discord.Interaction):
+
+    song_requests.clear()
+
+    await interaction.response.send_message(
+        "🧹 Song requests cleared.",
+        ephemeral=True
+    )
+
 # =========================
 # SONG LOOP
 # =========================
