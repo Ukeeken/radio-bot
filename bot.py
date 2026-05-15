@@ -576,13 +576,21 @@ async def dj_end(interaction: discord.Interaction):
         ephemeral=True
     )
 
-@tree.command(name="clear_requests", description="Clear song requests")
+@tree.command(
+    name="clear_requests",
+    description="Clear all song requests"
+)
 async def clear_requests(interaction: discord.Interaction):
+
+    global requests_updated, force_refresh
 
     song_requests.clear()
 
+    requests_updated = True
+    force_refresh = True
+
     await interaction.response.send_message(
-        "🧹 Song requests cleared.",
+        "🧹 Song requests cleared and scroller updated.",
         ephemeral=True
     )
 
