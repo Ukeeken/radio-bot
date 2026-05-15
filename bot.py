@@ -238,10 +238,7 @@ def spotify_enrich(artist, title):
 
         track = items[0]
 
-        spotify_artist = track["artists"][0]["name"]
-        spotify_title = track["name"]
-
-        return spotify_artist, spotify_title
+        return artist, title
 
     except:
         return artist, title
@@ -283,7 +280,7 @@ def get_album_art(song_query):
 def create_embed(artist, title, dj, album_art):
 
     embed = discord.Embed(
-        title="🔴 ON AIR • LIVE BROADCAST",
+        title="🔴 ON AIR • Black Sheep Radio",
         description=f"🎵 **{title}**\n👤 {artist}",
         color=0xff0033
     )
