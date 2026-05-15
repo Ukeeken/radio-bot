@@ -86,6 +86,8 @@ last_messages = {}
 radio_channels = {}
 
 loop_started = False
+song_task = None
+web_started = False
 
 # =========================
 # SAVE / LOAD
@@ -155,73 +157,108 @@ def get_current_dj():
 # =========================
 
 def get_now_playing():
+
     try:
+
+        headers = {
+            "Icy-MetaData": "1",
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache",
+            "User-Agent": "VLC/3.0.18"
+        }
+
         response = requests.get(
-
             STREAM_URL,
-            headers={
-                "Icy-MetaData": "1",
-                "icy-metadata": "1",
-                "User-Agent": "WinampMPEG/5.09"
-
-            },
+            headers=headers,
             stream=True,
-            timeout=12
+            timeout=8
         )
 
         metaint = response.headers.get("icy-metaint")
 
         if not metaint:
+            print("NO ICY METAINT")
             return "Unknown", "Unknown"
 
         metaint = int(metaint)
+
         stream = response.raw
 
-        audio_chunk = stream.read(metaint)
-        if not audio_chunk:
+        # skip audio block
+        stream.read(metaint)
+
+        # metadata size byte
+        metadata_length = stream.read(1)
+
+        if not metadata_length:
             return "Unknown", "Unknown"
 
-        meta_length_byte = stream.read(1)
-        if not meta_length_byte:
+        metadata_length = metadata_length[0] * 16
+
+        if metadata_length <= 0:
             return "Unknown", "Unknown"
 
-        meta_length = meta_length_byte[0] * 16
-        if meta_length == 0:
+        metadata = stream.read(metadata_length)
+
+        metadata = metadata.decode(
+            "utf-8",
+            errors="ignore"
+        )
+
+        print("RAW:", repr(metadata))
+
+        match = re.search(
+            r"StreamTitle='([^']*)';",
+            metadata
+        )
+
+        if not match:
             return "Unknown", "Unknown"
 
-        metadata = stream.read(meta_length).decode("utf-8", errors="ignore")
-        print("FULL METADATA:", repr(metadata))
-        raw = None
+        raw = match.group(1).strip()
 
-        if "StreamTitle='" in metadata:
-            try:
-                raw = metadata.split("StreamTitle='")[1].split("';")[0]
-            except:
-                pass
-
-        if not raw:
-            return "Unknown", "Unknown"
-
+        raw = raw.replace("\x00", "")
         raw = raw.strip()
 
         if not raw:
             return "Unknown", "Unknown"
 
-        # cleanup junk
-        raw = raw.replace("\x00", "").strip()
+        # Remove ads / station IDs
+        bad_values = [
+            "Live365",
+            "Black Sheep Radio",
+            "Advertisement"
+        ]
+
+        for bad in bad_values:
+            if bad.lower() in raw.lower():
+                return "Unknown", "Unknown"
 
         # normalize separators
-        raw = raw.replace(" – ", " - ").replace(" — ", " - ")
+        raw = (
+            raw.replace(" – ", " - ")
+               .replace(" — ", " - ")
+               .replace(" ~ ", " - ")
+        )
 
-        # split safely
+        print("CLEANED:", raw)
+
         if " - " in raw:
-            artist, title = raw.split(" - ", 1)
-            return artist.strip(), title.strip()
 
-        return "Live365", raw
+            artist, title = raw.split(" - ", 1)
+
+            artist = artist.strip()
+            title = title.strip()
+
+            if artist and title:
+                return artist, title
+
+        return "Unknown", raw
 
     except Exception as e:
-        print("STREAM ERROR:", repr(e))
+
+        print("METADATA ERROR:", repr(e))
+
         return "Unknown", "Unknown"
 
 def spotify_enrich(artist, title):
@@ -461,6 +498,10 @@ async def setup_radio(
     name="dj_start",
     description="Start DJ session globally"
 )
+@tree.command(
+    name="dj_start",
+    description="Start DJ session globally"
+)
 async def dj_start(
     interaction: discord.Interaction,
     name: str
@@ -468,16 +509,11 @@ async def dj_start(
 
     global manual_dj
     global last_song
-    global last_messages
 
     await interaction.response.defer(ephemeral=True)
 
     manual_dj = name
-
-    # FORCE repost to all servers
     last_song = None
-
-    # Optional: clear cached messages
 
     artist, title = get_now_playing()
 
@@ -532,7 +568,7 @@ async def song_loop():
 
                 # only enrich if we got something usable
                 if title == "Unknown":
-                    await asyncio.sleep(8)
+                    await asyncio.sleep(30)
                     continue
 
 # optional enrichment (safe fallback)
@@ -549,13 +585,13 @@ async def song_loop():
                 if last_messages:
                     await clear_all_scrollers()
 
-            await asyncio.sleep(15)
+            await asyncio.sleep(30)
 
         except Exception as e:
 
             print("Loop error:", e)
 
-            await asyncio.sleep(15)
+            await asyncio.sleep(30)
 
 # =========================
 # READY EVENT
@@ -570,7 +606,14 @@ async def on_ready():
 
     client.add_view(RequestView())
 
-    threading.Thread(target=run_web).start()
+    if not web_started:
+
+        threading.Thread(
+            target=run_web,
+            daemon=True
+        ).start()
+
+        web_started = True
 
     await tree.sync()
 
@@ -580,12 +623,25 @@ async def on_ready():
 
     if not loop_started:
 
-        asyncio.create_task(song_loop())
+        global song_task
+
+        if song_task is None:
+            song_task = asyncio.create_task(song_loop())
 
         loop_started = True
 
+@client.event
+async def on_disconnect():
+    print("Bot disconnected from Discord")
+
+@client.event
+async def on_resumed():
+    print("Discord session resumed")    
 # =========================
 # RUN BOT
 # =========================
 
-client.run(DISCORD_TOKEN)
+client.run(
+    DISCORD_TOKEN,
+    reconnect=True
+)
