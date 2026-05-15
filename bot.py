@@ -34,7 +34,10 @@ def request_song():
     return "OK"
 
 def run_web():
-    app.run(host="0.0.0.0", port=8080)
+    app.run(
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 8080))
+    )
 
 
 # =========================
@@ -500,7 +503,6 @@ async def setup_radio(
     name="dj_start",
     description="Start DJ session globally"
 )
-
 async def dj_start(
     interaction: discord.Interaction,
     name: str
@@ -509,22 +511,36 @@ async def dj_start(
     global manual_dj
     global last_song
 
-    await interaction.response.defer(ephemeral=True)
+    try:
 
-    manual_dj = name
-    last_song = None
+        await interaction.response.defer(ephemeral=True)
 
-    artist, title = get_now_playing()
+        manual_dj = name
+        last_song = None
 
-    print("CURRENT SONG:", artist, "-", title)
+        artist, title = get_now_playing()
 
-    if title != "Unknown":
-        await post_scroller(artist, title)
+        print("CURRENT SONG:", artist, "-", title)
 
-    await interaction.followup.send(
-        f"🎙 DJ LIVE: **{name}** is now on air globally!",
-        ephemeral=True
-    )
+        if title != "Unknown":
+            await post_scroller(artist, title)
+
+        await interaction.followup.send(
+            f"🎙 DJ LIVE: **{name}** is now on air globally!",
+            ephemeral=True
+        )
+
+    except Exception as e:
+
+        print("DJ_START ERROR:", e)
+
+        try:
+            await interaction.followup.send(
+                f"❌ Error starting DJ session:\n{e}",
+                ephemeral=True
+            )
+        except:
+            pass
 
 @tree.command(
     name="dj_end",
@@ -588,7 +604,8 @@ async def song_loop():
 
         except Exception as e:
 
-            print("Loop error:", e)
+            print("Loop error:")
+            traceback.print_exc()
 
             await asyncio.sleep(30)
 
@@ -617,6 +634,8 @@ async def on_ready():
 
     await tree.sync()
 
+    print("Slash commands synced")
+    
     print(f"Logged in as {client.user}")
 
     print("Loaded radio channels:", radio_channels)
@@ -636,7 +655,10 @@ async def on_disconnect():
 
 @client.event
 async def on_resumed():
-    print("Discord session resumed")    
+    print("Discord session resumed") 
+
+import traceback
+
 # =========================
 # RUN BOT
 # =========================
