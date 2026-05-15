@@ -57,7 +57,7 @@ if not DISCORD_TOKEN:
 # CONFIG
 # =========================
 
-STREAM_URL = "https://live365.com/station/Black-Sheep-Radio-a97529"
+STREAM_URL = "https://streaming.live365.com/a97529"
 BANNER_URL = "https://i.imgur.com/tdsxn4c.png"
 OWNER_ID = 1041766723717693450
 
@@ -157,10 +157,13 @@ def get_current_dj():
 def get_now_playing():
     try:
         response = requests.get(
+
             STREAM_URL,
             headers={
                 "Icy-MetaData": "1",
-                "User-Agent": "Mozilla/5.0"
+                "icy-metadata": "1",
+                "User-Agent": "WinampMPEG/5.09"
+
             },
             stream=True,
             timeout=12
