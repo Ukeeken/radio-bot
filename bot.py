@@ -72,6 +72,10 @@ sp = spotipy.Spotify(
 # DJ SCHEDULE
 # =========================
 
+DJ_SCHEDULE = [
+    {"name": "DJ Kenny", "start_hour": 14, "end_hour": 16},
+    {"name": "DJ Chrissy", "start_hour": 16, "end_hour": 20},
+]
 manual_dj = None
 last_song = None
 
@@ -183,12 +187,19 @@ def get_now_playing():
             return "Unknown", "Unknown"
 
         metadata = stream.read(meta_length).decode("utf-8", errors="ignore")
+        print("FULL METADATA:", repr(metadata))
+        raw = None
 
-        match = re.search(r"StreamTitle='(.*?)';", metadata)
-        if not match:
+        if "StreamTitle='" in metadata:
+            try:
+                raw = metadata.split("StreamTitle='")[1].split("';")[0]
+            except:
+            pass
+
+        if not raw:
             return "Unknown", "Unknown"
 
-        raw = match.group(1).strip()
+        raw = raw.strip()
 
         if not raw:
             return "Unknown", "Unknown"
@@ -266,7 +277,7 @@ def get_album_art(song_query):
 # CREATE EMBED
 # =========================
 
-def create_embed(title, artist, dj, album_art):
+def create_embed(artist, title, dj, album_art):
 
     embed = discord.Embed(
         title="🔴 ON AIR • LIVE BROADCAST",
@@ -341,7 +352,7 @@ async def post_scroller(artist, title):
 
     album_art = get_album_art(f"{artist} {title}")
 
-    embed = create_embed(title, artist, dj, album_art)
+    embed = create_embed(artist, title, dj, album_art)
 
     for guild in client.guilds:
         print(f"CHECKING GUILD: {guild.name}")
@@ -452,13 +463,12 @@ async def dj_start(
     # Optional: clear cached messages
     last_messages.clear()
 
-    song = get_now_playing()
+    artist, title = get_now_playing()
 
-    print("CURRENT SONG:", song)
+    print("CURRENT SONG:", artist, "-", title)
 
-    # Immediately post if song exists
-    if song:
-        await post_scroller(song)
+    if title != "Unknown":
+        await post_scroller(artist, title)
 
     await interaction.followup.send(
         f"🎙 DJ LIVE: **{name}** is now on air globally!",
@@ -506,7 +516,8 @@ async def song_loop():
 
                 # only enrich if we got something usable
                 if title == "Unknown":
-                    return
+                    await asyncio.sleep(8)
+                    continue
 
 # optional enrichment (safe fallback)
                 artist, title = spotify_enrich(artist, title)
