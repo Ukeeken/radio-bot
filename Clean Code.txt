@@ -1,3 +1,4 @@
+song_requests = []
 from dotenv import load_dotenv
 import os
 import spotipy
@@ -9,6 +10,45 @@ import requests
 import re
 from datetime import datetime
 import json
+from flask import Flask, request, jsonify
+import threading
+
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return """
+    <h1>🎧 Black Sheep Radio Requests</h1>
+    <form action="/request" method="POST">
+        <input name="song" placeholder="Enter song request" required>
+        <button type="submit">Send Request</button>
+    </form>
+    """
+@app.route("/request", methods=["POST"])
+def request_song():
+
+    global requests_updated, force_refresh
+
+    song = request.form.get("song")
+
+    if song:
+        song_requests.append(song)
+
+        # keep last 3 requests
+        if len(song_requests) > 3:
+            song_requests[:] = song_requests[-3:]
+
+        requests_updated = True
+        force_refresh = True   # 👈 forces scroller update
+
+    return "OK"
+
+def run_web():
+    app.run(
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 8080))
+    )
+
 
 # =========================
 # LOAD ENV
@@ -32,6 +72,7 @@ if not DISCORD_TOKEN:
 
 STREAM_URL = "https://streaming.live365.com/a97529"
 BANNER_URL = "https://i.imgur.com/tdsxn4c.png"
+OWNER_ID = 1041766723717693450
 
 sp = spotipy.Spotify(
     auth_manager=SpotifyClientCredentials(
@@ -48,9 +89,11 @@ DJ_SCHEDULE = [
     {"name": "DJ Kenny", "start_hour": 14, "end_hour": 16},
     {"name": "DJ Chrissy", "start_hour": 16, "end_hour": 20},
 ]
-
 manual_dj = None
 last_song = None
+
+requests_updated = False
+force_refresh = False
 
 # guild_id -> message
 last_messages = {}
@@ -59,6 +102,8 @@ last_messages = {}
 radio_channels = {}
 
 loop_started = False
+song_task = None
+web_started = False
 
 # =========================
 # SAVE / LOAD
@@ -66,7 +111,7 @@ loop_started = False
 
 def save_channels():
     with open("radio_channels.json", "w") as f:
-        json.dump(radio_channels, f)
+        json.dump(radio_channels, f, indent=4)
 
 def load_channels():
     global radio_channels
@@ -101,7 +146,7 @@ class RequestView(discord.ui.View):
             discord.ui.Button(
                 label="🎵 Request Song",
                 style=discord.ButtonStyle.link,
-                url="https://github.com/Ukeeken/radio-bot.git"
+                url="https://worker-production-fc98.up.railway.app"
             )
         )
 
@@ -131,64 +176,125 @@ def get_now_playing():
 
     try:
 
+        headers = {
+            "Icy-MetaData": "1",
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache",
+            "User-Agent": "VLC/3.0.18"
+        }
+
         response = requests.get(
-            "https://streaming.live365.com/a97529",
-            headers={
-                "Icy-MetaData": "1",
-                "User-Agent": "Mozilla/5.0"
-            },
+            STREAM_URL,
+            headers=headers,
             stream=True,
-            timeout=10
+            timeout=8
         )
 
-        metaint_header = response.headers.get("icy-metaint")
+        metaint = response.headers.get("icy-metaint")
 
-        if not metaint_header:
-            print("No icy-metaint header found")
-            return None
+        if not metaint:
+            print("NO ICY METAINT")
+            return "Unknown", "Unknown"
 
-        metaint = int(metaint_header)
+        metaint = int(metaint)
 
         stream = response.raw
 
+        # skip audio block
         stream.read(metaint)
 
+        # metadata size byte
         metadata_length = stream.read(1)
 
         if not metadata_length:
-            print("No metadata length")
-            return None
+            return "Unknown", "Unknown"
 
         metadata_length = metadata_length[0] * 16
 
-        metadata = stream.read(metadata_length).decode(
+        if metadata_length <= 0:
+            return "Unknown", "Unknown"
+
+        metadata = stream.read(metadata_length)
+
+        metadata = metadata.decode(
             "utf-8",
             errors="ignore"
         )
 
-        print("RAW METADATA:", metadata)
+        print("RAW:", repr(metadata))
 
         match = re.search(
             r"StreamTitle='([^']*)';",
             metadata
         )
 
-        if match:
+        if not match:
+            return "Unknown", "Unknown"
 
-            song = match.group(1).strip()
+        raw = match.group(1).strip()
 
-            if song:
-                return song
+        raw = raw.replace("\x00", "")
+        raw = raw.strip()
 
-        return None
+        if not raw:
+            return "Unknown", "Unknown"
+
+        # Remove ads / station IDs
+        bad_values = [
+            "Live365",
+            "Black Sheep Radio",
+            "Advertisement"
+        ]
+
+        for bad in bad_values:
+            if bad.lower() in raw.lower():
+                return "Unknown", "Unknown"
+
+        # normalize separators
+        raw = (
+            raw.replace(" – ", " - ")
+               .replace(" — ", " - ")
+               .replace(" ~ ", " - ")
+        )
+
+        print("CLEANED:", raw)
+
+        if " - " in raw:
+
+            artist, title = raw.split(" - ", 1)
+
+            artist = artist.strip()
+            title = title.strip()
+
+            if artist and title:
+                return artist, title
+
+        return "Unknown", raw
 
     except Exception as e:
 
-        print(f"ERROR in {guild.name}")
-        print(type(e))
-        print(e)
+        print("METADATA ERROR:", repr(e))
 
-        return None
+        return "Unknown", "Unknown"
+
+def spotify_enrich(artist, title):
+
+    try:
+        query = f"{artist} {title}".strip()
+
+        results = sp.search(q=query, type="track", limit=1)
+
+        items = results["tracks"]["items"]
+
+        if not items:
+            return artist, title
+
+        track = items[0]
+
+        return artist, title
+
+    except:
+        return artist, title
 
 # =========================
 # SPOTIFY ALBUM ART
@@ -224,11 +330,11 @@ def get_album_art(song_query):
 # CREATE EMBED
 # =========================
 
-def create_embed(song, dj, album_art):
+def create_embed(artist, title, dj, album_art):
 
     embed = discord.Embed(
-        title="🔴 ON AIR • LIVE BROADCAST",
-        description=f"🎵 **{song}**",
+        title="🔴 ON AIR • Black Sheep Radio",
+        description=f"🎵 **{title}**\n👤 {artist}",
         color=0xff0033
     )
 
@@ -243,6 +349,21 @@ def create_embed(song, dj, album_art):
         value="[▶ Click Here To Listen](https://thechatbarcommunity.org/radio-player/)",
         inline=True
     )
+        # LIVE REQUESTS
+    if song_requests:
+        latest_requests = song_requests[-5:]  # last 5 requests
+
+        embed.add_field(
+            name="🎧 Live Requests",
+            value="\n".join(f"• {r}" for r in latest_requests),
+            inline=False
+        )
+    else:
+        embed.add_field(
+            name="🎧 Live Requests",
+            value="No requests yet 🎵",
+            inline=False
+        )
 
     embed.set_thumbnail(
         url=album_art or BANNER_URL
@@ -260,51 +381,65 @@ def create_embed(song, dj, album_art):
 
 async def delete_old_message(guild_id):
 
-    old_msg = last_messages.get(guild_id)
+    message_id = last_messages.get(str(guild_id))
 
-    if old_msg:
+    if not message_id:
+        return
 
-        try:
-            await old_msg.delete()
-        except:
-            pass
+    channel_id = radio_channels.get(str(guild_id))
 
-        last_messages.pop(guild_id, None)
+    if not channel_id:
+        return
+
+    try:
+        channel = client.get_channel(int(channel_id))
+
+        if channel is None:
+            channel = await client.fetch_channel(int(channel_id))
+
+        msg = await channel.fetch_message(message_id)
+        await msg.delete()
+
+        print(f"Deleted old message in guild {guild_id}")
+
+    except Exception as e:
+        print("Delete error:", e)
+
+    last_messages.pop(str(guild_id), None)
 
 # =========================
 # POST SCROLLER
 # =========================
 
-async def post_scroller(song):
+async def post_scroller(artist, title):
 
     dj = get_current_dj()
 
     if not dj:
         return
 
-    album_art = get_album_art(song)
+    album_art = BANNER_URL
 
-    embed = create_embed(
-        song,
-        dj,
-        album_art
-    )
+    embed = create_embed(artist, title, dj, album_art)
 
     for guild in client.guilds:
 
+        print(f"CHECKING GUILD: {guild.name}")
+
         channel_id = radio_channels.get(str(guild.id))
+
+        print(f"CHANNEL ID: {channel_id}")
 
         if not channel_id:
             print(f"No setup for {guild.name}")
             continue
 
-        channel = client.get_channel(int(channel_id))
-
-        if not channel:
-            print(f"Cannot find channel for {guild.name}")
-            continue
-
         try:
+
+            channel = client.get_channel(int(channel_id))
+
+            if channel is None:
+                channel = await client.fetch_channel(int(channel_id))
 
             await delete_old_message(guild.id)
 
@@ -315,13 +450,13 @@ async def post_scroller(song):
                 view=RequestView()
             )
 
-            last_messages[guild.id] = msg
+            last_messages[str(guild.id)] = msg.id
 
             print(f"Posted in {guild.name}")
 
         except Exception as e:
 
-            print(f"ERROR in {guild.name}")
+            print("STREAM ERROR")
             print(type(e))
             print(e)
 
@@ -351,7 +486,10 @@ async def setup_radio(
     channel: discord.TextChannel
 ):
 
-    if not interaction.user.guild_permissions.administrator:
+    if (
+        not interaction.user.guild_permissions.administrator
+        and interaction.user.id != OWNER_ID
+    ):
 
         await interaction.response.send_message(
             "❌ Admin only.",
@@ -363,6 +501,8 @@ async def setup_radio(
     radio_channels[str(interaction.guild.id)] = channel.id
 
     save_channels()
+
+    print("SAVED CHANNELS:", radio_channels)
 
     await interaction.response.send_message(
         f"🎧 Radio channel set to {channel.mention}",
@@ -381,24 +521,36 @@ async def dj_start(
     global manual_dj
     global last_song
 
-    await interaction.response.defer(ephemeral=True)
+    try:
 
-    manual_dj = name
+        await interaction.response.defer(ephemeral=True)
 
-    song = get_now_playing()
+        manual_dj = name
+        last_song = None
 
-    print("CURRENT SONG:", song)
+        artist, title = get_now_playing()
 
-    if song:
+        print("CURRENT SONG:", artist, "-", title)
 
-        last_song = song
+        if title != "Unknown":
+            await post_scroller(artist, title)
 
-        await post_scroller(song)
+        await interaction.followup.send(
+            f"🎙 DJ LIVE: **{name}** is now on air globally!",
+            ephemeral=True
+        )
 
-    await interaction.followup.send(
-        f"🎙 DJ LIVE: **{name}** is now on air globally!",
-        ephemeral=True
-    )
+    except Exception as e:
+
+        print("DJ_START ERROR:", e)
+
+        try:
+            await interaction.followup.send(
+                f"❌ Error starting DJ session:\n{e}",
+                ephemeral=True
+            )
+        except:
+            pass
 
 @tree.command(
     name="dj_end",
@@ -412,10 +564,33 @@ async def dj_end(interaction: discord.Interaction):
     manual_dj = None
     last_song = None
 
+    # stop loop temporarily effect
+    await clear_all_scrollers()
+
+    await asyncio.sleep(2)  # give Discord time
+
     await clear_all_scrollers()
 
     await interaction.response.send_message(
         "🔴 DJ session ended globally.",
+        ephemeral=True
+    )
+
+@tree.command(
+    name="clear_requests",
+    description="Clear all song requests"
+)
+async def clear_requests(interaction: discord.Interaction):
+
+    global requests_updated, force_refresh
+
+    song_requests.clear()
+
+    requests_updated = True
+    force_refresh = True
+
+    await interaction.response.send_message(
+        "🧹 Song requests cleared and scroller updated.",
         ephemeral=True
     )
 
@@ -437,28 +612,48 @@ async def song_loop():
 
             if current_dj:
 
-                song = get_now_playing()
+                artist, title = get_now_playing()
 
-                if song and song != last_song:
+                # only enrich if we got something usable
+                if title == "Unknown":
+                    await asyncio.sleep(30)
+                    continue
 
-                    print("New song:", song)
+                # optional enrichment (safe fallback)
+                # artist, title = spotify_enrich(artist, title)
 
-                    last_song = song
+                song_key = f"{artist} - {title}"
 
-                    await post_scroller(song)
+                global requests_updated, force_refresh
+
+                should_update = False
+
+                if song_key != last_song:
+                    last_song = song_key
+                    should_update = True
+
+                # force update when requests change
+                if requests_updated or force_refresh:
+                    should_update = True
+
+                if should_update:
+                    requests_updated = False
+                    force_refresh = False
+                    await post_scroller(artist, title)
 
             else:
 
                 if last_messages:
                     await clear_all_scrollers()
 
-            await asyncio.sleep(15)
+            await asyncio.sleep(30)
 
         except Exception as e:
 
-            print("Loop error:", e)
+            print("Loop error:")
+            traceback.print_exc()
 
-            await asyncio.sleep(15)
+            await asyncio.sleep(30)
 
 # =========================
 # READY EVENT
@@ -468,25 +663,72 @@ async def song_loop():
 async def on_ready():
 
     global loop_started
+    global web_started
+    global song_task
 
-    load_channels()
+    try:
 
-    client.add_view(RequestView())
+        load_channels()
 
-    await tree.sync()
+        client.add_view(RequestView())
 
-    print(f"Logged in as {client.user}")
+        if not web_started:
 
-    print("Loaded radio channels:", radio_channels)
+            threading.Thread(
+                target=run_web,
+                daemon=True
+            ).start()
 
-    if not loop_started:
+            web_started = True
 
-        asyncio.create_task(song_loop())
+        synced = await tree.sync()
 
-        loop_started = True
+        print(f"Synced {len(synced)} command(s)")
+
+        print(f"Logged in as {client.user}")
+
+        print("Loaded radio channels:", radio_channels)
+
+        if not loop_started:
+
+            if song_task is None:
+                song_task = asyncio.create_task(song_loop())
+
+            loop_started = True
+
+            print("Song loop started")
+
+    except Exception as e:
+
+        import traceback
+
+        print("ON_READY ERROR:")
+        traceback.print_exc()
+
+@client.event
+async def on_disconnect():
+    print("Bot disconnected from Discord")
+
+@client.event
+async def on_resumed():
+    print("Discord session resumed") 
+
+@client.event
+async def on_error(event, *args, **kwargs):
+
+    import traceback
+
+    print(f"ERROR IN EVENT: {event}")
+
+    traceback.print_exc()
+
+import traceback
 
 # =========================
 # RUN BOT
 # =========================
 
-client.run(DISCORD_TOKEN)
+client.run(
+    DISCORD_TOKEN,
+    reconnect=True
+)

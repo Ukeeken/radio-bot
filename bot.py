@@ -30,16 +30,23 @@ def request_song():
     global requests_updated, force_refresh
 
     song = request.form.get("song")
+    user = request.form.get("user", "Website User")
+    server = request.form.get("server", "Website")
 
     if song:
-        song_requests.append(song)
+
+        song_requests.append({
+            "song": song,
+            "user": user,
+            "server": server
+        })
 
         # keep last 3 requests
         if len(song_requests) > 3:
             song_requests[:] = song_requests[-3:]
 
         requests_updated = True
-        force_refresh = True   # 👈 forces scroller update
+        force_refresh = True
 
     return "OK"
 
@@ -349,16 +356,30 @@ def create_embed(artist, title, dj, album_art):
         value="[▶ Click Here To Listen](https://thechatbarcommunity.org/radio-player/)",
         inline=True
     )
-        # LIVE REQUESTS
+
+    # LIVE REQUESTS
     if song_requests:
-        latest_requests = song_requests[-5:]  # last 5 requests
+
+        latest_requests = song_requests[-5:]
+
+        request_lines = []
+
+        for r in latest_requests:
+
+            request_lines.append(
+                f"• 🎵 {r['song']}\n"
+                f"  👤 {r['user']}\n"
+                f"  🌐 {r['server']}"
+            )
 
         embed.add_field(
             name="🎧 Live Requests",
-            value="\n".join(f"• {r}" for r in latest_requests),
+            value="\n\n".join(request_lines),
             inline=False
         )
+
     else:
+
         embed.add_field(
             name="🎧 Live Requests",
             value="No requests yet 🎵",
@@ -374,7 +395,6 @@ def create_embed(artist, title, dj, album_art):
     )
 
     return embed
-
 # =========================
 # DELETE OLD SCROLLER
 # =========================
