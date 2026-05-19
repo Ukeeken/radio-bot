@@ -20,6 +20,8 @@ app = Flask(__name__)
 
 lock = threading.Lock()
 
+dj_command_queue = asyncio.Queue()
+
 @app.route("/")
 def home():
     return """
@@ -63,6 +65,66 @@ def run_web():
         threaded=True
     )
 
+@app.route("/dj")
+def dj_panel():
+    return """
+    <h1>🎛 Black Sheep DJ Panel</h1>
+
+    <form action="/dj/start" method="POST">
+        <input name="name" placeholder="DJ Name" required>
+        <button type="submit">Start DJ</button>
+    </form>
+
+    <form action="/dj/end" method="POST">
+        <button type="submit">End DJ</button>
+    </form>
+
+    <form action="/dj/clear" method="POST">
+        <button type="submit">Clear Requests</button>
+    </form>
+
+    <form action="/dj/refresh" method="POST">
+        <button type="submit">Force Refresh Scroller</button>
+    </form>
+    """
+
+@app.route("/dj/start", methods=["POST"])
+def dj_start_web():
+    name = request.form.get("name", "DJ Web")
+
+    dj_command_queue.put_nowait({
+        "type": "dj_start",
+        "name": name
+    })
+
+    return "DJ started"
+
+@app.route("/dj/end", methods=["POST"])
+def dj_end_web():
+
+    dj_command_queue.put_nowait({
+        "type": "dj_end"
+    })
+
+    return "DJ ended"
+
+@app.route("/dj/clear", methods=["POST"])
+def dj_clear_web():
+
+    dj_command_queue.put_nowait({
+        "type": "clear_requests"
+    })
+
+    return "Requests cleared"
+
+@app.route("/dj/refresh", methods=["POST"])
+def dj_refresh_web():
+
+    dj_command_queue.put_nowait({
+        "type": "refresh"
+    })
+
+    return "Refreshed"
 
 # =========================
 # LOAD ENV
@@ -635,6 +697,50 @@ async def clear_requests(interaction: discord.Interaction):
     )
 
 # =========================
+# DJ PANEL LOOP (STEP 4)
+# =========================
+
+async def dj_panel_loop():
+    await client.wait_until_ready()
+
+    while not client.is_closed():
+        try:
+            cmd = await dj_command_queue.get()
+
+            if cmd["type"] == "dj_start":
+                global manual_dj, last_song
+                manual_dj = cmd["name"]
+                last_song = None
+
+                print("DJ STARTED FROM PANEL:", manual_dj)
+
+                artist, title = get_now_playing()
+                if title != "Unknown":
+                    await post_scroller(artist, title)
+
+            elif cmd["type"] == "dj_end":
+                global manual_dj, last_song
+                manual_dj = None
+                last_song = None
+                await clear_all_scrollers()
+
+            elif cmd["type"] == "clear_requests":
+                song_requests.clear()
+                global requests_updated, force_refresh
+                requests_updated = True
+                force_refresh = True
+
+            elif cmd["type"] == "refresh":
+                global requests_updated, force_refresh
+                requests_updated = True
+                force_refresh = True
+
+        except Exception as e:
+            print("DJ PANEL ERROR:", e)
+
+        await asyncio.sleep(0.5)
+
+# =========================
 # SONG LOOP
 # =========================
 
@@ -706,6 +812,8 @@ async def on_ready():
     global web_started
     global song_task
 
+    asyncio.create_task(dj_panel_loop())
+    
     try:
 
         load_channels()
