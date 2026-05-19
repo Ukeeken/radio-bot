@@ -13,6 +13,7 @@ import json
 from flask import Flask, request, jsonify
 import threading
 import traceback
+import queue
 
 threaded=True
 
@@ -20,7 +21,7 @@ app = Flask(__name__)
 
 lock = threading.Lock()
 
-dj_command_queue = asyncio.Queue()
+dj_command_queue = queue.Queue()
 
 @app.route("/")
 def home():
@@ -705,10 +706,15 @@ async def dj_panel_loop():
 
     while not client.is_closed():
         try:
-            cmd = await dj_command_queue.get()
+            try:
+                cmd = dj_command_queue.get(timeout=1)
+            except queue.Empty:
+                await asyncio.sleep(0.5)
+                continue
+
+            global manual_dj, last_song, requests_updated, force_refresh
 
             if cmd["type"] == "dj_start":
-                global manual_dj, last_song
                 manual_dj = cmd["name"]
                 last_song = None
 
@@ -719,26 +725,23 @@ async def dj_panel_loop():
                     await post_scroller(artist, title)
 
             elif cmd["type"] == "dj_end":
-                global manual_dj, last_song
                 manual_dj = None
                 last_song = None
                 await clear_all_scrollers()
 
             elif cmd["type"] == "clear_requests":
                 song_requests.clear()
-                global requests_updated, force_refresh
                 requests_updated = True
                 force_refresh = True
 
             elif cmd["type"] == "refresh":
-                global requests_updated, force_refresh
                 requests_updated = True
                 force_refresh = True
 
         except Exception as e:
             print("DJ PANEL ERROR:", e)
 
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.2)
 
 # =========================
 # SONG LOOP
@@ -813,7 +816,7 @@ async def on_ready():
     global song_task
 
     asyncio.create_task(dj_panel_loop())
-    
+
     try:
 
         load_channels()
