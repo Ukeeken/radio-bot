@@ -13,6 +13,7 @@ import json
 from flask import Flask, request, jsonify
 import threading
 import requests
+import traceback
 
 app = Flask(__name__)
 
@@ -33,7 +34,6 @@ def request_song():
 
     song = request.form.get("song")
 
-    # sanitize inputs
     user = request.form.get("user") or "Website User"
     server = request.form.get("server") or "Website"
 
@@ -626,7 +626,7 @@ async def request(interaction: discord.Interaction, song: str):
 
     song_requests.append({
         "song": song,
-        "user": interaction.user.name,
+        "user": interaction.user.display_name,   # FIXED
         "user_id": interaction.user.id,
         "server": interaction.guild.name if interaction.guild else "DM",
         "server_id": interaction.guild.id if interaction.guild else 0,
@@ -749,8 +749,6 @@ async def on_ready():
 
     except Exception as e:
 
-        import traceback
-
         print("ON_READY ERROR:")
         traceback.print_exc()
 
@@ -765,13 +763,10 @@ async def on_resumed():
 @client.event
 async def on_error(event, *args, **kwargs):
 
-    import traceback
-
     print(f"ERROR IN EVENT: {event}")
 
     traceback.print_exc()
 
-import traceback
 
 # =========================
 # RUN BOT
