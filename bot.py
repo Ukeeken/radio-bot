@@ -366,11 +366,11 @@ def create_embed(artist, title, dj, album_art):
 
         for r in latest_requests:
 
-            request_lines.append(
-                f"• 🎵 {r['song']}\n"
-                f"  👤 {r['user']}\n"
-                f"  🌐 {r['server']}"
-            )
+            song_requests.append({
+                "song": song,
+                "user": interaction.user.display_name,
+                "server": interaction.guild.name
+            })
 
         embed.add_field(
             name="🎧 Live Requests",
