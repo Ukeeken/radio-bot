@@ -190,6 +190,79 @@ class RequestView(discord.ui.View):
             )
         )
 
+class DJPanel(discord.ui.View):
+
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(
+        label="▶ Start DJ",
+        style=discord.ButtonStyle.green
+    )
+    async def start_dj(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+
+        global manual_dj
+        manual_dj = interaction.user.display_name
+
+        artist, title = get_now_playing()
+
+        if title != "Unknown":
+            await post_scroller(artist, title)
+
+        await interaction.response.send_message(
+            f"🎙 DJ session started by {interaction.user.display_name}",
+            ephemeral=True
+        )
+
+    @discord.ui.button(
+        label="⏹ End DJ",
+        style=discord.ButtonStyle.red
+    )
+    async def end_dj(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+
+        global manual_dj
+        global last_song
+
+        manual_dj = None
+        last_song = None
+
+        await clear_all_scrollers()
+
+        await interaction.response.send_message(
+            "🔴 DJ session ended.",
+            ephemeral=True
+        )
+
+    @discord.ui.button(
+        label="🧹 Clear Requests",
+        style=discord.ButtonStyle.gray
+    )
+    async def clear_requests_button(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+
+        global requests_updated, force_refresh
+
+        song_requests.clear()
+
+        requests_updated = True
+        force_refresh = True
+
+        await interaction.response.send_message(
+            "🧹 Requests cleared.",
+            ephemeral=True
+        )
+
 # =========================
 # DJ SYSTEM
 # =========================
@@ -669,6 +742,23 @@ async def request(interaction: discord.Interaction, song: str):
     await interaction.response.send_message(
         f"🎵 Request added: **{song}**",
         ephemeral=True
+    )
+
+@tree.command(
+    name="dj_panel",
+    description="Post DJ control panel"
+)
+async def dj_panel(interaction: discord.Interaction):
+
+    embed = discord.Embed(
+        title="🎛 Black Sheep Radio DJ Panel",
+        description="Control the radio bot here.",
+        color=0xff0033
+    )
+
+    await interaction.response.send_message(
+        embed=embed,
+        view=DJPanel()
     )
 
 # =========================
