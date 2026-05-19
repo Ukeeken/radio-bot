@@ -23,9 +23,37 @@ lock = threading.Lock()
 def home():
     return """
     <h1>🎧 Black Sheep Radio Requests</h1>
+
     <form action="/request" method="POST">
-        <input name="song" placeholder="Enter song request" required>
-        <button type="submit">Send Request</button>
+
+        <input
+            name="song"
+            placeholder="Enter song request"
+            required
+        >
+
+        <br><br>
+
+        <input
+            name="user"
+            placeholder="Requested By"
+            required
+        >
+
+        <br><br>
+
+        <input
+            name="server"
+            placeholder="Discord Server"
+            required
+        >
+
+        <br><br>
+
+        <button type="submit">
+            Send Request
+        </button>
+
     </form>
     """
 @app.route("/request", methods=["POST"])
