@@ -12,8 +12,11 @@ from datetime import datetime
 import json
 from flask import Flask, request, jsonify
 import threading
+import requests
 
 app = Flask(__name__)
+
+lock = threading.Lock()
 
 @app.route("/")
 def home():
@@ -26,20 +29,29 @@ def home():
     """
 @app.route("/request", methods=["POST"])
 def request_song():
-
     global requests_updated, force_refresh
 
     song = request.form.get("song")
 
-    if song:
-        song_requests.append(song)
+    # sanitize inputs
+    user = request.form.get("user") or "Website User"
+    server = request.form.get("server") or "Website"
 
-        # keep last 3 requests
-        if len(song_requests) > 3:
-            song_requests[:] = song_requests[-3:]
+    if not song:
+        return "Missing song", 400
+
+    with lock:
+        song_requests.append({
+            "song": song,
+            "user": user,
+            "server": server,
+            "source": "web"
+        })
+
+        song_requests[:] = song_requests[-3:]
 
         requests_updated = True
-        force_refresh = True   # 👈 forces scroller update
+        force_refresh = True
 
     return "OK"
 
@@ -349,13 +361,26 @@ def create_embed(artist, title, dj, album_art):
         value="[▶ Click Here To Listen](https://thechatbarcommunity.org/radio-player/)",
         inline=True
     )
-        # LIVE REQUESTS
+    # LIVE REQUESTS
     if song_requests:
-        latest_requests = song_requests[-5:]  # last 5 requests
+        latest_requests = song_requests[-5:]
+
+        request_lines = []
+
+        for r in latest_requests:
+            song = r.get("song", "Unknown")
+            user = r.get("user", "Unknown")
+            server = r.get("server", "Unknown")
+
+            request_lines.append(
+                f"• 🎵 **{song}**\n"
+                f"  👤 {user}\n"
+                f"  🌐 {server}"
+            )
 
         embed.add_field(
             name="🎧 Live Requests",
-            value="\n".join(f"• {r}" for r in latest_requests),
+            value="\n\n".join(request_lines)[:1020],  # IMPORTANT: Discord limit safety
             inline=False
         )
     else:
@@ -591,6 +616,30 @@ async def clear_requests(interaction: discord.Interaction):
 
     await interaction.response.send_message(
         "🧹 Song requests cleared and scroller updated.",
+        ephemeral=True
+    )
+
+@tree.command(name="request", description="Request a song")
+async def request(interaction: discord.Interaction, song: str):
+
+    global requests_updated, force_refresh
+
+    song_requests.append({
+        "song": song,
+        "user": interaction.user.name,
+        "user_id": interaction.user.id,
+        "server": interaction.guild.name if interaction.guild else "DM",
+        "server_id": interaction.guild.id if interaction.guild else 0,
+        "source": "discord"
+    })
+
+    song_requests[:] = song_requests[-3:]
+
+    requests_updated = True
+    force_refresh = True
+
+    await interaction.response.send_message(
+        f"🎵 Request added: **{song}**",
         ephemeral=True
     )
 
