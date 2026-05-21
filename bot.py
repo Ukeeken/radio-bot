@@ -63,33 +63,57 @@ def home():
     """
 @app.route("/request", methods=["POST"])
 def request_song():
-    global requests_updated, force_refresh
 
-    print("FORM DATA:")
-    print(request.form)
+    global requests_updated
+    global force_refresh
 
-    song = request.form.get("song")
+    try:
 
-    user = request.form.get("user") or "Website User"
-    server = request.form.get("server") or "Website"
+        song = request.form.get("song")
+        user = request.form.get("user")
+        server = request.form.get("server")
 
-    if not song:
-        return "Missing song", 400
+        if not song:
+            return "Missing song", 400
 
-    with lock:
-        song_requests.append({
-            "song": song,
-            "user": user,
-            "server": server,
-            "source": "web"
-        })
+        if not user:
+            user = "Website User"
 
-        song_requests[:] = song_requests[-3:]
+        if not server:
+            server = "Website"
 
-        requests_updated = True
-        force_refresh = True
+        with lock:
 
-    return "OK"
+            song_requests.append({
+                "song": str(song),
+                "user": str(user),
+                "server": str(server),
+                "source": "web"
+            })
+
+            # limit requests
+            song_requests[:] = song_requests[-3:]
+
+            requests_updated = True
+            force_refresh = True
+
+        print("NEW WEB REQUEST:")
+        print(song_requests[-1])
+
+        return """
+        <h2>✅ Request Sent!</h2>
+        <a href="/">Send Another</a>
+        """
+
+    except Exception as e:
+
+        print("REQUEST ERROR:")
+        traceback.print_exc()
+
+        return f"""
+        <h2>❌ Internal Server Error</h2>
+        <pre>{e}</pre>
+        """, 500
 
 def run_web():
     app.run(
