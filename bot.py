@@ -84,46 +84,52 @@ def home():
 @app.route("/request", methods=["POST"])
 def request_song():
 
-    global requests_updated
-    global force_refresh
-    global requests_enabled
+    try:
+        global requests_updated
+        global force_refresh
+        global requests_enabled
+        global song_requests
 
-    if not requests_enabled:
-        return """
-        <h2>❌ Song requests are currently disabled by the DJ.</h2>
+        if not requests_enabled:
+            return """
+            <h2>❌ Song requests are currently disabled by the DJ.</h2>
+            """
+
+        artist = request.form.get("artist") or "Unknown Artist"
+        song = request.form.get("song")
+
+        user = request.form.get("user") or "Website User"
+        server = request.form.get("server") or "Website"
+
+        if not song or not artist:
+            return "Missing song or artist", 400
+
+        with lock:
+
+            song_requests.append({
+                "artist": artist,
+                "song": song,
+                "user": user,
+                "server": server,
+                "source": "web"
+            })
+
+            song_requests[:] = song_requests[-3:]
+
+            requests_updated = True
+            force_refresh = True
+
+        return f"""
+        <h2>✅ Request submitted!</h2>
+
+        <p>
+        🎵 {artist} - {song}
+        </p>
         """
-
-    song = request.form.get("song")
-    artist = request.form.get("artist")
-
-    user = request.form.get("user") or "Website User"
-    server = request.form.get("server") or "Website"
-
-    if not song or not artist:
-        return "Missing song or artist", 400
-
-    with lock:
-
-        song_requests.append({
-            "artist": artist,
-            "song": song,
-            "user": user,
-            "server": server,
-            "source": "web"
-        })
-
-        song_requests[:] = song_requests[-3:]
-
-        requests_updated = True
-        force_refresh = True
-
-    return f"""
-    <h2>✅ Request submitted!</h2>
-
-    <p>
-    🎵 {artist} - {song}
-    </p>
-    """
+    except Exception as e:
+        print("FLASK ERROR:", e)
+        traceback.print_exc()
+        return "Internal Server Error", 500
 
 def run_web():
     app.run(
@@ -1052,3 +1058,4 @@ client.run(
     reconnect=True
 )
 
+5
