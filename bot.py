@@ -844,7 +844,7 @@ async def clear_requests(interaction: discord.Interaction):
     )
 
 @tree.command(name="request", description="Request a song")
-async def request(
+async def request_song_command(
     interaction: discord.Interaction,
     song: str,
     artist: str
