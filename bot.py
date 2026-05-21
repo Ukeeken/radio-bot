@@ -12,11 +12,10 @@ from datetime import datetime
 import json
 from flask import Flask, request, jsonify
 import threading
+import requests
 import traceback
 
 flask_thread = None
-
-requests_enabled = True
 
 app = Flask(__name__)
 
@@ -36,17 +35,7 @@ def home():
             <input
                 type="text"
                 name="song"
-                placeholder="Song Title"
-                required
-                style="width:300px;padding:10px;"
-            >
-        </p>
-
-        <p>
-            <input
-                type="text"
-                name="artist"
-                placeholder="Artist"
+                placeholder="Song Request"
                 required
                 style="width:300px;padding:10px;"
             >
@@ -86,44 +75,54 @@ def request_song():
 
     global requests_updated
     global force_refresh
-    global requests_enabled
 
-    if not requests_enabled:
+    try:
+
+        song = request.form.get("song")
+        user = request.form.get("user")
+        server = request.form.get("server")
+
+        if not song:
+            return "Missing song", 400
+
+        if not user:
+            user = "Website User"
+
+        if not server:
+            server = "Website"
+
+        with lock:
+
+            song_requests.append({
+                "song": str(song),
+                "user": str(user),
+                "server": str(server),
+                "source": "web"
+            })
+
+            # limit requests
+            song_requests[:] = song_requests[-3:]
+
+            requests_updated = True
+            force_refresh = True
+
+        print("NEW WEB REQUEST:")
+        print(song_requests[-1])
+
         return """
-        <h2>❌ Song requests are currently disabled by the DJ.</h2>
+        <h2>✅ Request Sent!</h2>
+        <a href="/">Send Another</a>
         """
 
-    song = request.form.get("song")
-    artist = request.form.get("artist")
+    except Exception as e:
 
-    user = request.form.get("user") or "Website User"
-    server = request.form.get("server") or "Website"
+        print("REQUEST ERROR:")
+        traceback.print_exc()
 
-    if not song or not artist:
-        return "Missing song or artist", 400
-
-    with lock:
-
-        song_requests.append({
-            "artist": artist,
-            "song": song,
-            "user": user,
-            "server": server,
-            "source": "web"
-        })
-
-        song_requests[:] = song_requests[-3:]
-
-        requests_updated = True
-        force_refresh = True
-
-    return f"""
-    <h2>✅ Request submitted!</h2>
-
-    <p>
-    🎵 {artist} - {song}
-    </p>
-    """
+        return f"""
+        <h2>❌ Internal Server Error</h2>
+        <pre>{e}</pre>
+        """, 500
 
 def run_web():
     app.run(
@@ -166,9 +165,13 @@ sp = spotipy.Spotify(
 )
 
 # =========================
-# DJ STATUS
+# DJ SCHEDULE
 # =========================
 
+DJ_SCHEDULE = [
+    {"name": "DJ Kenny", "start_hour": 14, "end_hour": 16},
+    {"name": "DJ Chrissy", "start_hour": 16, "end_hour": 20},
+]
 manual_dj = None
 last_song = None
 
@@ -214,31 +217,6 @@ client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
 # =========================
-# DJ PERMISSIONS
-# =========================
-
-def is_dj_or_admin(interaction: discord.Interaction):
-
-    # Bot owner always allowed
-    if interaction.user.id == OWNER_ID:
-        return True
-
-    # Server admins allowed
-    if interaction.user.guild_permissions.administrator:
-        return True
-
-    # Users with DJ role allowed
-    allowed_roles = [
-        "DJ",
-        "Radio DJ",
-        "Moderator"
-    ]
-
-    user_roles = [role.name for role in interaction.user.roles]
-
-    return any(role in allowed_roles for role in user_roles)
-
-# =========================
 # REQUEST BUTTON
 # =========================
 
@@ -251,7 +229,7 @@ class RequestView(discord.ui.View):
             discord.ui.Button(
                 label="🎵 Request Song",
                 style=discord.ButtonStyle.link,
-                url="https://coconut.fps.ms:30995"
+                url="https://worker-production-fc98.up.railway.app"
             )
         )
 
@@ -270,13 +248,6 @@ class DJPanel(discord.ui.View):
         interaction: discord.Interaction,
         button: discord.ui.Button
     ):
-        if not is_dj_or_admin(interaction):
-
-            await interaction.response.send_message(
-                "❌ DJs or admins only.",
-                ephemeral=True
-            )
-            return
 
         global manual_dj
         global last_song
@@ -304,14 +275,7 @@ class DJPanel(discord.ui.View):
         interaction: discord.Interaction,
         button: discord.ui.Button
     ):
-        if not is_dj_or_admin(interaction):
 
-            await interaction.response.send_message(
-                "❌ DJs or admins only.",
-                ephemeral=True
-            )
-            return
-    
         global manual_dj
         global last_song
 
@@ -335,14 +299,7 @@ class DJPanel(discord.ui.View):
         interaction: discord.Interaction,
         button: discord.ui.Button
     ):
-        if not is_dj_or_admin(interaction):
 
-            await interaction.response.send_message(
-                "❌ DJs or admins only.",
-                ephemeral=True
-            )
-            return
-        
         global requests_updated
         global force_refresh
 
@@ -356,46 +313,23 @@ class DJPanel(discord.ui.View):
             ephemeral=True
         )
 
-    # =========================
-    # DJ SYSTEM
-    # =========================
-
-    @discord.ui.button(
-        label="🎵 Toggle Requests",
-        style=discord.ButtonStyle.blurple,
-        custom_id="djpanel_toggle_requests"
-    )
-    async def toggle_requests(
-        self,
-        interaction: discord.Interaction,
-        button: discord.ui.Button
-    ):
-        if not is_dj_or_admin(interaction):
-
-            await interaction.response.send_message(
-                "❌ DJs or admins only.",
-                ephemeral=True
-            )
-            return
-        
-        global requests_enabled
-
-        requests_enabled = not requests_enabled
-
-        status = (
-            "ENABLED ✅"
-            if requests_enabled
-            else "DISABLED ❌"
-        )
-
-        await interaction.response.send_message(
-            f"🎵 Song requests are now {status}",
-            ephemeral=True
-        )
+# =========================
+# DJ SYSTEM
+# =========================
 
 def get_current_dj():
 
-    return manual_dj
+    if manual_dj:
+        return manual_dj
+
+    now = datetime.now().hour
+
+    for dj in DJ_SCHEDULE:
+
+        if dj["start_hour"] <= now < dj["end_hour"]:
+            return dj["name"]
+
+    return None
 
 # =========================
 # LIVE365 METADATA
@@ -580,18 +514,17 @@ def create_embed(artist, title, dj, album_art):
     )
     # LIVE REQUESTS
     if song_requests:
-        latest_requests = song_requests[-3:]
+        latest_requests = song_requests[-5:]
 
         request_lines = []
 
         for r in latest_requests:
-            song = r.get("song", "Unknown Song")
-            artist = r.get("artist", "Unknown Artist")
+            song = r.get("song", "Unknown")
             user = r.get("user", "Unknown")
             server = r.get("server", "Unknown")
 
             request_lines.append(
-                f"• 🎵 **{artist} - {song}**\n"
+                f"• 🎵 **{song}**\n"
                 f"  👤 {user}\n"
                 f"  🌐 {server}"
             )
@@ -661,7 +594,7 @@ async def post_scroller(artist, title):
     if not dj:
         return
 
-    album_art = get_album_art(f"{artist} {title}") or BANNER_URL
+    album_art = BANNER_URL
 
     embed = create_embed(artist, title, dj, album_art)
 
@@ -838,28 +771,13 @@ async def clear_requests(interaction: discord.Interaction):
     )
 
 @tree.command(name="request", description="Request a song")
-async def request(
-    interaction: discord.Interaction,
-    song: str,
-    artist: str
-):
+async def request_song_command(interaction: discord.Interaction, song: str):
 
-    global requests_enabled
-    global requests_updated
-    global force_refresh
-
-    if not requests_enabled:
-
-        await interaction.response.send_message(
-            "❌ Song requests are currently disabled by the DJ.",
-            ephemeral=True
-        )
-        return
+    global requests_updated, force_refresh
 
     song_requests.append({
         "song": song,
-        "artist": artist,
-        "user": interaction.user.display_name,
+        "user": interaction.user.display_name,   # FIXED
         "user_id": interaction.user.id,
         "server": interaction.guild.name if interaction.guild else "DM",
         "server_id": interaction.guild.id if interaction.guild else 0,
@@ -872,7 +790,7 @@ async def request(
     force_refresh = True
 
     await interaction.response.send_message(
-        f"🎵 Request added: **{artist} - {song}**",
+        f"🎵 Request added: **{song}**",
         ephemeral=True
     )
 
