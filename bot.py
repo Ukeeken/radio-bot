@@ -771,7 +771,7 @@ async def clear_requests(interaction: discord.Interaction):
     )
 
 @tree.command(name="request", description="Request a song")
-async def request(interaction: discord.Interaction, song: str):
+async def request_song_command(interaction: discord.Interaction, song: str):
 
     global requests_updated, force_refresh
 
