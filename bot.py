@@ -15,6 +15,8 @@ import threading
 import requests
 import traceback
 
+flask_thread = None
+
 app = Flask(__name__)
 
 lock = threading.Lock()
@@ -92,7 +94,9 @@ def request_song():
 def run_web():
     app.run(
         host="0.0.0.0",
-        port=int(os.environ.get("PORT", 8080))
+        port=int(os.environ.get("PORT", 8080)),
+        debug=False,
+        use_reloader=False
     )
 
 
@@ -762,10 +766,12 @@ async def dj_panel(interaction: discord.Interaction):
         color=0xff0033
     )
 
-    await interaction.response.send_message(
+    await interaction.response.defer()
+
+    await interaction.followup.send(
         embed=embed,
         view=DJPanel()
-    )
+)
 
 # =========================
 # SONG LOOP
