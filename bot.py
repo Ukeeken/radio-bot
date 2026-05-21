@@ -800,18 +800,40 @@ async def request_song_command(interaction: discord.Interaction, song: str):
 )
 async def dj_panel(interaction: discord.Interaction):
 
-    embed = discord.Embed(
-        title="🎛 Black Sheep Radio DJ Panel",
-        description="Control the radio bot here.",
-        color=0xff0033
-    )
+    try:
 
-    await interaction.response.defer()
+        await interaction.response.defer(ephemeral=True)
 
-    await interaction.followup.send(
-        embed=embed,
-        view=DJPanel()
-)
+        embed = discord.Embed(
+            title="🎛 Black Sheep Radio DJ Panel",
+            description=(
+                "Control the radio bot here.\n\n"
+                "▶ Start DJ\n"
+                "⏹ End DJ\n"
+                "🧹 Clear Requests"
+            ),
+            color=0xff0033
+        )
+
+        await interaction.followup.send(
+            embed=embed,
+            view=DJPanel()
+        )
+
+        print("DJ panel posted")
+
+    except Exception as e:
+
+        print("DJ PANEL ERROR:")
+        traceback.print_exc()
+
+        try:
+            await interaction.followup.send(
+                f"❌ DJ panel failed:\n{e}",
+                ephemeral=True
+            )
+        except:
+            pass
 
 # =========================
 # SONG LOOP
