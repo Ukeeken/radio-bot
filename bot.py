@@ -166,13 +166,9 @@ sp = spotipy.Spotify(
 )
 
 # =========================
-# DJ SCHEDULE
+# DJ STATUS
 # =========================
 
-DJ_SCHEDULE = [
-    {"name": "DJ Kenny", "start_hour": 14, "end_hour": 16},
-    {"name": "DJ Chrissy", "start_hour": 16, "end_hour": 20},
-]
 manual_dj = None
 last_song = None
 
@@ -399,17 +395,7 @@ class DJPanel(discord.ui.View):
 
 def get_current_dj():
 
-    if manual_dj:
-        return manual_dj
-
-    now = datetime.now().hour
-
-    for dj in DJ_SCHEDULE:
-
-        if dj["start_hour"] <= now < dj["end_hour"]:
-            return dj["name"]
-
-    return None
+    return manual_dj
 
 # =========================
 # LIVE365 METADATA
