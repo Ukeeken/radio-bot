@@ -207,7 +207,8 @@ class DJPanel(discord.ui.View):
 
     @discord.ui.button(
         label="▶ Start DJ",
-        style=discord.ButtonStyle.green
+        style=discord.ButtonStyle.green,
+        custom_id="djpanel_start"
     )
     async def start_dj(
         self,
@@ -216,7 +217,10 @@ class DJPanel(discord.ui.View):
     ):
 
         global manual_dj
+        global last_song
+
         manual_dj = interaction.user.display_name
+        last_song = None
 
         artist, title = get_now_playing()
 
@@ -230,7 +234,8 @@ class DJPanel(discord.ui.View):
 
     @discord.ui.button(
         label="⏹ End DJ",
-        style=discord.ButtonStyle.red
+        style=discord.ButtonStyle.red,
+        custom_id="djpanel_end"
     )
     async def end_dj(
         self,
@@ -253,7 +258,8 @@ class DJPanel(discord.ui.View):
 
     @discord.ui.button(
         label="🧹 Clear Requests",
-        style=discord.ButtonStyle.gray
+        style=discord.ButtonStyle.gray,
+        custom_id="djpanel_clear"
     )
     async def clear_requests_button(
         self,
@@ -261,7 +267,8 @@ class DJPanel(discord.ui.View):
         button: discord.ui.Button
     ):
 
-        global requests_updated, force_refresh
+        global requests_updated
+        global force_refresh
 
         song_requests.clear()
 
