@@ -251,7 +251,7 @@ class RequestView(discord.ui.View):
             discord.ui.Button(
                 label="🎵 Request Song",
                 style=discord.ButtonStyle.link,
-                url="https://worker-production-fc98.up.railway.app"
+                url="https://coconut.fps.ms:30995"
             )
         )
 
