@@ -838,6 +838,7 @@ async def on_ready():
         load_channels()
 
         client.add_view(RequestView())
+        client.add_view(DJPanel())
 
         if not web_started:
 
