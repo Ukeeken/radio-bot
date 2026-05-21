@@ -27,6 +27,7 @@ def home():
     <form action="/request" method="POST">
 
         <input
+            type="text"
             name="song"
             placeholder="Enter song request"
             required
@@ -35,6 +36,7 @@ def home():
         <br><br>
 
         <input
+            type="text"
             name="user"
             placeholder="Requested By"
             required
@@ -43,6 +45,7 @@ def home():
         <br><br>
 
         <input
+            type="text"
             name="server"
             placeholder="Discord Server"
             required
@@ -59,6 +62,9 @@ def home():
 @app.route("/request", methods=["POST"])
 def request_song():
     global requests_updated, force_refresh
+
+    print("FORM DATA:")
+    print(request.form)
 
     song = request.form.get("song")
 
