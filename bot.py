@@ -227,24 +227,45 @@ tree = app_commands.CommandTree(client)
 
 def is_dj_or_admin(interaction: discord.Interaction):
 
-    # Bot owner always allowed
-    if interaction.user.id == OWNER_ID:
-        return True
+    try:
 
-    # Server admins allowed
-    if interaction.user.guild_permissions.administrator:
-        return True
+        # Owner always allowed
+        if interaction.user.id == OWNER_ID:
+            return True
 
-    # Users with DJ role allowed
-    allowed_roles = [
-        "DJ",
-        "Radio DJ",
-        "Moderator"
-    ]
+        # Must be in a guild
+        if interaction.guild is None:
+            return False
 
-    user_roles = [role.name for role in interaction.user.roles]
+        # interaction.user is usually already a Member
+        member = interaction.user
 
-    return any(role in allowed_roles for role in user_roles)
+        # Admins
+        if member.guild_permissions.administrator:
+            return True
+
+        # Allowed DJ roles
+        allowed_roles = [
+            "DJ",
+            "Radio DJ",
+            "Moderator"
+        ]
+
+        user_roles = [role.name for role in member.roles]
+
+        print("USER ROLES:", user_roles)
+
+        return any(
+            role in allowed_roles
+            for role in user_roles
+        )
+
+    except Exception as e:
+
+        print("PERMISSION ERROR:", e)
+        traceback.print_exc()
+
+        return False
 
 # =========================
 # REQUEST BUTTON
