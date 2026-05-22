@@ -213,8 +213,10 @@ def load_channels():
 # =========================
 
 intents = discord.Intents.default()
+
 intents.guilds = True
 intents.messages = True
+intents.members = True
 
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
@@ -766,7 +768,13 @@ async def dj_start(
     interaction: discord.Interaction,
     name: str
 ):
+    if not is_dj_or_admin(interaction):
 
+        await interaction.response.send_message(
+            "❌ DJs or admins only.",
+            ephemeral=True
+        )
+        return
     global manual_dj
     global last_song
 
@@ -806,7 +814,13 @@ async def dj_start(
     description="End DJ session globally"
 )
 async def dj_end(interaction: discord.Interaction):
+    if not is_dj_or_admin(interaction):
 
+        await interaction.response.send_message(
+            "❌ DJs or admins only.",
+            ephemeral=True
+        )
+        return
     global manual_dj
     global last_song
 
@@ -830,7 +844,13 @@ async def dj_end(interaction: discord.Interaction):
     description="Clear all song requests"
 )
 async def clear_requests(interaction: discord.Interaction):
+    if not is_dj_or_admin(interaction):
 
+        await interaction.response.send_message(
+            "❌ DJs or admins only.",
+            ephemeral=True
+        )
+        return
     global requests_updated, force_refresh
 
     song_requests.clear()
@@ -1057,5 +1077,3 @@ client.run(
     DISCORD_TOKEN,
     reconnect=True
 )
-
-5
