@@ -225,20 +225,26 @@ tree = app_commands.CommandTree(client)
 # DJ PERMISSIONS
 # =========================
 
-def is_dj_or_admin(interaction: discord.Interaction):
+async def is_dj_or_admin(interaction: discord.Interaction):
 
     try:
 
-        # Owner always allowed
+        # Bot owner
         if interaction.user.id == OWNER_ID:
             return True
 
-        # Must be in a guild
-        if interaction.guild is None:
+        # Must be in a server
+        if not interaction.guild:
             return False
 
-        # interaction.user is usually already a Member
-        member = interaction.user
+        member = interaction.guild.get_member(interaction.user.id)
+
+        # fallback fetch
+        if member is None:
+            member = await interaction.guild.fetch_member(interaction.user.id)
+
+        if not member:
+            return False
 
         # Admins
         if member.guild_permissions.administrator:
@@ -251,13 +257,11 @@ def is_dj_or_admin(interaction: discord.Interaction):
             "Moderator"
         ]
 
-        user_roles = [role.name for role in member.roles]
-
-        print("USER ROLES:", user_roles)
+        member_role_names = [role.name for role in member.roles]
 
         return any(
             role in allowed_roles
-            for role in user_roles
+            for role in member_role_names
         )
 
     except Exception as e:
@@ -299,7 +303,7 @@ class DJPanel(discord.ui.View):
         interaction: discord.Interaction,
         button: discord.ui.Button
     ):
-        if not is_dj_or_admin(interaction):
+        if not await is_dj_or_admin(interaction):
 
             await interaction.response.send_message(
                 "❌ DJs or admins only.",
@@ -333,7 +337,7 @@ class DJPanel(discord.ui.View):
         interaction: discord.Interaction,
         button: discord.ui.Button
     ):
-        if not is_dj_or_admin(interaction):
+        if not await is_dj_or_admin(interaction):
 
             await interaction.response.send_message(
                 "❌ DJs or admins only.",
@@ -364,7 +368,7 @@ class DJPanel(discord.ui.View):
         interaction: discord.Interaction,
         button: discord.ui.Button
     ):
-        if not is_dj_or_admin(interaction):
+        if not await is_dj_or_admin(interaction):
 
             await interaction.response.send_message(
                 "❌ DJs or admins only.",
@@ -789,7 +793,7 @@ async def dj_start(
     interaction: discord.Interaction,
     name: str
 ):
-    if not is_dj_or_admin(interaction):
+    if not await is_dj_or_admin(interaction):
 
         await interaction.response.send_message(
             "❌ DJs or admins only.",
@@ -835,7 +839,7 @@ async def dj_start(
     description="End DJ session globally"
 )
 async def dj_end(interaction: discord.Interaction):
-    if not is_dj_or_admin(interaction):
+    if not await is_dj_or_admin(interaction):
 
         await interaction.response.send_message(
             "❌ DJs or admins only.",
@@ -865,7 +869,7 @@ async def dj_end(interaction: discord.Interaction):
     description="Clear all song requests"
 )
 async def clear_requests(interaction: discord.Interaction):
-    if not is_dj_or_admin(interaction):
+    if not await is_dj_or_admin(interaction):
 
         await interaction.response.send_message(
             "❌ DJs or admins only.",
