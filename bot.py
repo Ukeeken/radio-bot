@@ -252,12 +252,15 @@ async def is_dj_or_admin(interaction: discord.Interaction):
 
         # Allowed DJ roles
         allowed_roles = [
-            "DJ",
-            "Radio DJ",
-            "Moderator"
+            "djs",
+            "radio dj",
+            "moderator"
         ]
 
-        member_role_names = [role.name for role in member.roles]
+        member_role_names = [
+            role.name.lower()
+            for role in member.roles
+        ]
 
         return any(
             role in allowed_roles
