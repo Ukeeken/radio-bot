@@ -460,7 +460,7 @@ class DJPanel(discord.ui.View):
         interaction: discord.Interaction,
         button: discord.ui.Button
     ):
-        if not is_dj_or_admin(interaction):
+        if not await is_dj_or_admin(interaction):
 
             await interaction.response.send_message(
                 "❌ DJs or admins only.",
