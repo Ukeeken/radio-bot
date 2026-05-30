@@ -25,58 +25,112 @@ lock = threading.Lock()
 @app.route("/")
 def home():
     return """
+    <!DOCTYPE html>
     <html>
-    <body style="font-family:sans-serif;background:#111;color:white;padding:30px;">
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <h1>🎧 Black Sheep Radio Requests</h1>
+        <style>
 
-    <form action="/request" method="POST">
+        body{
+            font-family:sans-serif;
+            background:#111;
+            color:white;
+            padding:20px;
+            margin:0;
+        }
 
-        <p>
-            <input
-                type="text"
-                name="song"
-                placeholder="Song Title"
-                required
-                style="width:300px;padding:10px;"
-            >
-        </p>
+        .container{
+            max-width:500px;
+            margin:auto;
+        }
 
-        <p>
-            <input
-                type="text"
-                name="artist"
-                placeholder="Artist"
-                required
-                style="width:300px;padding:10px;"
-            >
-        </p>
+        h1{
+            text-align:center;
+        }
 
-        <p>
-            <input
-                type="text"
-                name="user"
-                placeholder="Requested By"
-                required
-                style="width:300px;padding:10px;"
-            >
-        </p>
+        input{
+            width:100%;
+            padding:12px;
+            border-radius:8px;
+            border:none;
+            box-sizing:border-box;
+            font-size:16px;
+        }
 
-        <p>
-            <input
-                type="text"
-                name="server"
-                placeholder="Discord Server"
-                required
-                style="width:300px;padding:10px;"
-            >
-        </p>
+        p{
+            margin-bottom:12px;
+        }
 
-        <button type="submit" style="padding:10px 20px;">
-            Send Request
-        </button>
+        button{
+            width:100%;
+            padding:14px;
+            background:#ff0033;
+            color:white;
+            border:none;
+            border-radius:8px;
+            font-size:18px;
+            cursor:pointer;
+        }
 
-    </form>
+        button:hover{
+            opacity:0.9;
+        }
+
+        </style>
+    </head>
+
+    <body>
+
+    <div class="container">
+
+        <h1>🎧 Black Sheep Radio Requests</h1>
+
+        <form action="/request" method="POST">
+
+            <p>
+                <input
+                    type="text"
+                    name="song"
+                    placeholder="Song Title"
+                    required
+                >
+            </p>
+
+            <p>
+                <input
+                    type="text"
+                    name="artist"
+                    placeholder="Artist"
+                    required
+                >
+            </p>
+
+            <p>
+                <input
+                    type="text"
+                    name="user"
+                    placeholder="Requested By"
+                    required
+                >
+            </p>
+
+            <p>
+                <input
+                    type="text"
+                    name="server"
+                    placeholder="Discord Server"
+                    required
+                >
+            </p>
+
+            <button type="submit">
+                🎵 Send Request
+            </button>
+
+        </form>
+
+    </div>
 
     </body>
     </html>
