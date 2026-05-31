@@ -78,5 +78,49 @@ audio{
 
 </div>
 
+<script>
+
+async function updateNowPlaying(){
+
+    try{
+
+        const response =
+            await fetch("/api/nowplaying");
+
+        const data =
+            await response.json();
+
+        document.getElementById("song")
+            .innerText = data.title;
+
+        document.getElementById("artist")
+            .innerText = data.artist;
+
+        document.getElementById("dj")
+            .innerText =
+                data.dj
+                ? "🎙 " + data.dj
+                : "No DJ Live";
+
+        document.getElementById("cover")
+            .src = data.album_art;
+
+    }
+    catch(error){
+
+        console.log(error);
+
+    }
+}
+
+updateNowPlaying();
+
+setInterval(
+    updateNowPlaying,
+    15000
+);
+
+</script>
+
 </body>
 </html>
