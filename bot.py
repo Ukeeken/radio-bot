@@ -200,8 +200,8 @@ def run_web():
         use_reloader=False
     )
 
-@app.route("/api/nowplaying")
-def nowplaying():
+@app.route("/api/status")
+def status():
 
     artist, title = get_now_playing()
 
@@ -210,18 +210,18 @@ def nowplaying():
     )
 
     return jsonify({
+
         "artist": artist,
         "title": title,
         "dj": manual_dj,
-        "album_art": album_art or BANNER_URL
+        "album_art": album_art or BANNER_URL,
+
+        "requests": song_requests[-3:],
+
+        "station_name": "Black Sheep Radio",
+
+        "stream_url": STREAM_URL
     })
-
-@app.route("/api/requests")
-def requests_api():
-
-    return jsonify(
-        song_requests[-3:]
-    )
 
 # =========================
 # LOAD ENV
