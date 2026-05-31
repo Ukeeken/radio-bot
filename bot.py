@@ -193,12 +193,16 @@ def request_song():
         return "Internal Server Error", 500
 
 def run_web():
-    app.run(
-        host="0.0.0.0",
-        port=int(os.environ.get("PORT", 8080)),
-        debug=False,
-        use_reloader=False
-    )
+    try:
+        app.run(
+            host="0.0.0.0",
+            port=int(os.environ.get("PORT", 8080)),
+            debug=False,
+            use_reloader=False
+        )
+    except Exception as e:
+        print("FLASK START ERROR:", e)
+        traceback.print_exc()
 
 @app.route("/api/status")
 def status():
@@ -222,6 +226,10 @@ def status():
 
         "stream_url": STREAM_URL
     })
+
+@app.errorhandler(404)
+def not_found(e):
+    return "Radio Bot Server Running", 200
 
 # =========================
 # LOAD ENV
@@ -1133,14 +1141,19 @@ async def on_ready():
         client.add_view(RequestView())
         client.add_view(DJPanel())
 
-        if not web_started:
+        def start_flask_once():
+            global web_started
 
-            threading.Thread(
-                target=run_web,
-                daemon=True
-            ).start()
+            if web_started:
+                return
 
             web_started = True
+
+            t = threading.Thread(
+                target=run_web,
+                daemon=True
+            )
+            t.start()
 
         synced = await tree.sync()
 
