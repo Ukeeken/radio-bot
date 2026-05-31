@@ -135,6 +135,13 @@ def home():
     </body>
     </html>
     """
+
+@app.route("/player")
+def player():
+
+    with open("player.html", "r", encoding="utf-8") as f:
+        return f.read()
+
 @app.route("/request", methods=["POST"])
 def request_song():
 
@@ -193,6 +200,21 @@ def run_web():
         use_reloader=False
     )
 
+@app.route("/api/nowplaying")
+def nowplaying():
+
+    artist, title = get_now_playing()
+
+    album_art = get_album_art(
+        f"{artist} {title}"
+    )
+
+    return jsonify({
+        "artist": artist,
+        "title": title,
+        "dj": manual_dj,
+        "album_art": album_art or BANNER_URL
+    })
 
 # =========================
 # LOAD ENV
