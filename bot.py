@@ -216,6 +216,13 @@ def nowplaying():
         "album_art": album_art or BANNER_URL
     })
 
+@app.route("/api/requests")
+def requests_api():
+
+    return jsonify(
+        song_requests[-3:]
+    )
+
 # =========================
 # LOAD ENV
 # =========================
