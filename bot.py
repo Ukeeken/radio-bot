@@ -135,13 +135,6 @@ def home():
     </body>
     </html>
     """
-
-@app.route("/player")
-def player():
-
-    with open("player.html", "r", encoding="utf-8") as f:
-        return f.read()
-
 @app.route("/request", methods=["POST"])
 def request_song():
 
@@ -193,43 +186,13 @@ def request_song():
         return "Internal Server Error", 500
 
 def run_web():
-    try:
-        app.run(
-            host="0.0.0.0",
-            port=int(os.environ.get("PORT", 8080)),
-            debug=False,
-            use_reloader=False
-        )
-    except Exception as e:
-        print("FLASK START ERROR:", e)
-        traceback.print_exc()
-
-@app.route("/api/status")
-def status():
-
-    artist, title = get_now_playing()
-
-    album_art = get_album_art(
-        f"{artist} {title}"
+    app.run(
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 8080)),
+        debug=False,
+        use_reloader=False
     )
 
-    return jsonify({
-
-        "artist": artist,
-        "title": title,
-        "dj": manual_dj,
-        "album_art": album_art or BANNER_URL,
-
-        "requests": song_requests[-3:],
-
-        "station_name": "Black Sheep Radio",
-
-        "stream_url": STREAM_URL
-    })
-
-@app.errorhandler(404)
-def not_found(e):
-    return "Radio Bot Server Running", 200
 
 # =========================
 # LOAD ENV
@@ -1141,19 +1104,14 @@ async def on_ready():
         client.add_view(RequestView())
         client.add_view(DJPanel())
 
-        def start_flask_once():
-            global web_started
+        if not web_started:
 
-            if web_started:
-                return
-
-            web_started = True
-
-            t = threading.Thread(
+            threading.Thread(
                 target=run_web,
                 daemon=True
-            )
-            t.start()
+            ).start()
+
+            web_started = True
 
         synced = await tree.sync()
 
