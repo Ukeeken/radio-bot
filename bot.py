@@ -13,12 +13,14 @@ import json
 from flask import Flask, request, jsonify
 import threading
 import traceback
+from flask_cors import CORS
 
 flask_thread = None
 
 requests_enabled = True
 
 app = Flask(__name__)
+CORS(app)  # ✅ AFTER app is created
 
 lock = threading.Lock()
 
@@ -135,6 +137,16 @@ def home():
     </body>
     </html>
     """
+
+@app.route("/status")
+def status():
+    return jsonify({
+        "dj": manual_dj,
+        "artist": last_song.split(" - ")[0] if last_song and " - " in last_song else "Unknown",
+        "title": last_song.split(" - ", 1)[1] if last_song and " - " in last_song else "Unknown",
+        "requests": song_requests[-3:]
+    })
+
 @app.route("/request", methods=["POST"])
 def request_song():
 
@@ -193,6 +205,9 @@ def run_web():
         use_reloader=False
     )
 
+@app.route("/player")
+def player():
+    return open("radio-player.html").read()
 
 # =========================
 # LOAD ENV
