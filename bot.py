@@ -193,6 +193,17 @@ def run_web():
         use_reloader=False
     )
 
+@app.route("/now-playing")
+def now_playing_api():
+
+    artist, title = get_now_playing()
+    dj = get_current_dj()
+
+    return jsonify({
+        "artist": artist,
+        "title": title,
+        "dj": dj
+    })
 
 # =========================
 # LOAD ENV
