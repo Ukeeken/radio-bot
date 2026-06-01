@@ -525,24 +525,50 @@
   <div class="station-tag">Live Streaming Radio</div>
   <h1 class="station-name">Black <span>Sheep</span> Radio</h1>
 
-  <a href="/schedule" style="
-    display: inline-block;
-    margin-bottom: 2rem;
-    font-family: 'Barlow Condensed', sans-serif;
-    font-weight: 700;
-    font-size: 13px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    text-decoration: none;
-    padding: 8px 18px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    transition: color 0.15s, border-color 0.15s;
-  " onmouseover="this.style.color='#f0f0f0';this.style.borderColor='rgba(255,255,255,0.14)'"
-     onmouseout="this.style.color='#888';this.style.borderColor='rgba(255,255,255,0.08)'">
-    📅 DJ Schedule
-  </a>
+  <!-- Schedule Dropdown -->
+  <div style="position:relative; margin-bottom:2rem; width:100%; max-width:420px;">
+    <button id="schedBtn" onclick="toggleSchedule()" style="
+      width:100%;
+      font-family:'Barlow Condensed',sans-serif;
+      font-weight:700;
+      font-size:13px;
+      letter-spacing:0.12em;
+      text-transform:uppercase;
+      color:var(--text-muted);
+      background:transparent;
+      padding:8px 18px;
+      border:1px solid var(--border);
+      border-radius:6px;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      transition:color 0.15s, border-color 0.15s;
+    ">
+      <span>📅 DJ Schedule</span>
+      <span id="schedArrow" style="transition:transform 0.2s; display:inline-block;">▼</span>
+    </button>
+
+    <div id="schedPanel" style="
+      display:none;
+      margin-top:8px;
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:12px;
+      overflow:hidden;
+      width:100%;
+    ">
+      <div style="padding:14px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between;">
+        <span style="font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:14px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text);">Weekly Schedule</span>
+        <span style="font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-dim); background:var(--surface2); border:1px solid var(--border); padding:3px 8px; border-radius:3px;">All times ET</span>
+      </div>
+      <div id="schedList"></div>
+      <div style="padding:12px 16px; border-top:1px solid var(--border); font-size:12px; color:var(--text-dim); font-style:italic; line-height:1.5;">
+        🎵 DJ Juvi — Pink Noise fill-in DJ on Fridays & surprise days
+      </div>
+    </div>
+  </div>
 
   <!-- Album art -->
   <div class="art-wrap">
@@ -822,6 +848,80 @@ npArtist.textContent = "Live Stream";
 // poll every 20 seconds
 pollStatus();
 setInterval(pollStatus, 20000);
+
+// ─── SCHEDULE DROPDOWN ───
+const SCHEDULE = [
+  { day: "Monday",    shows: [{ dj: "DJ Hissy",    time: "5:00–7:00pm",   show: "You Never Know" }] },
+  { day: "Tuesday",   shows: [{ dj: "DJ Ellie",    time: "6:00–8:00pm",   show: "Tuesday Night Country HoDown" }] },
+  { day: "Wednesday", shows: [{ dj: "DJ Chrissy",  time: "12:00–2:00pm",  show: "Echoes & Endings" },
+                               { dj: "DJ Kenny",    time: "2:00–4:00pm",   show: "Punk'd Up and Plugg'd In" }] },
+  { day: "Thursday",  shows: [{ dj: "DJ Mysterio", time: "12:30–4:30pm",  show: "The Welsh Dragon" }] },
+  { day: "Friday",    shows: [{ dj: "DJ Chrissy",  time: "12:00–2:00pm",  show: "Smoke and Shadows" },
+                               { dj: "DJ Kenny",    time: "2:00–4:00pm",   show: "Punk'd Up and Plugg'd In" },
+                               { dj: "DJ Ellie",    time: "4:00–6:00pm",   show: "Fridays Unleashed" }] },
+  { day: "Saturday",  shows: [{ dj: "DJ Avlee",    time: "9:00–11:00pm",  show: "Late Night with Avlee" }] },
+  { day: "Sunday",    shows: [{ dj: "DJ Mysterio", time: "12:30–4:30pm",  show: "Music Through the Decades" },
+                               { dj: "DJ Avlee",    time: "8:00–10:00pm",  show: "80s Rock Plus" }] }
+];
+
+const DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+
+function getTodayET() {
+  const etStr = new Date().toLocaleString("en-US", { timeZone: "America/New_York" });
+  return new Date(etStr);
+}
+
+function buildSchedule() {
+  const list = document.getElementById("schedList");
+  if (list.children.length > 0) return; // already built
+  const todayName = DAYS[getTodayET().getDay()];
+
+  SCHEDULE.forEach(({ day, shows }) => {
+    const isToday = day === todayName;
+
+    const dayRow = document.createElement("div");
+    dayRow.style.cssText = "padding:8px 16px 4px; display:flex; align-items:center; gap:10px;";
+    dayRow.innerHTML = `
+      <span style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:${isToday ? 'var(--red)' : 'var(--text-dim)'};">${day}</span>
+      ${isToday ? '<span style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--red);background:rgba(255,0,51,0.1);border:1px solid rgba(255,0,51,0.25);padding:2px 7px;border-radius:3px;">Today</span>' : ''}
+    `;
+    list.appendChild(dayRow);
+
+    shows.forEach(({ dj, time, show }) => {
+      const row = document.createElement("div");
+      row.style.cssText = `display:flex;align-items:center;gap:10px;padding:8px 16px;border-top:1px solid var(--border);background:${isToday ? 'rgba(255,0,51,0.03)' : 'transparent'};`;
+      row.innerHTML = `
+        <div style="width:32px;height:32px;border-radius:50%;background:var(--surface3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;color:var(--red);flex-shrink:0;">${dj.replace("DJ ","").charAt(0)}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;color:var(--text);">${dj}</div>
+          <div style="font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${show}</div>
+        </div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;color:var(--text-muted);white-space:nowrap;text-align:right;">${time}</div>
+      `;
+      list.appendChild(row);
+    });
+  });
+}
+
+let schedOpen = false;
+function toggleSchedule() {
+  schedOpen = !schedOpen;
+  const panel = document.getElementById("schedPanel");
+  const arrow = document.getElementById("schedArrow");
+  const btn = document.getElementById("schedBtn");
+  if (schedOpen) {
+    buildSchedule();
+    panel.style.display = "block";
+    arrow.style.transform = "rotate(180deg)";
+    btn.style.borderColor = "rgba(255,0,51,0.3)";
+    btn.style.color = "var(--text)";
+  } else {
+    panel.style.display = "none";
+    arrow.style.transform = "rotate(0deg)";
+    btn.style.borderColor = "var(--border)";
+    btn.style.color = "var(--text-muted)";
+  }
+}
 </script>
 </body>
 </html>
