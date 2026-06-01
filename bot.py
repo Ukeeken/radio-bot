@@ -562,7 +562,7 @@ def get_now_playing():
         print("RAW:", repr(metadata))
 
         match = re.search(
-            r"StreamTitle='([^']*)';",
+            r"StreamTitle='(.*?)';StreamUrl=",
             metadata
         )
 
