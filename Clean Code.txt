@@ -13,12 +13,14 @@ import json
 from flask import Flask, request, jsonify
 import threading
 import traceback
+from flask_cors import CORS
 
 flask_thread = None
 
 requests_enabled = True
 
 app = Flask(__name__)
+CORS(app)  # ✅ AFTER app is created
 
 lock = threading.Lock()
 
@@ -135,6 +137,16 @@ def home():
     </body>
     </html>
     """
+
+@app.route("/status")
+def status():
+    return jsonify({
+        "dj": manual_dj,
+        "artist": last_song.split(" - ")[0] if last_song and " - " in last_song else "Unknown",
+        "title": last_song.split(" - ", 1)[1] if last_song and " - " in last_song else "Unknown",
+        "requests": song_requests[-3:]
+    })
+
 @app.route("/request", methods=["POST"])
 def request_song():
 
@@ -193,6 +205,13 @@ def run_web():
         use_reloader=False
     )
 
+@app.route("/player")
+def player():
+    return open("radio-player.html").read()
+
+@app.route("/schedule")
+def schedule():
+    return open("dj-schedule.html").read()
 
 # =========================
 # LOAD ENV
@@ -543,7 +562,7 @@ def get_now_playing():
         print("RAW:", repr(metadata))
 
         match = re.search(
-            r"StreamTitle='([^']*)';",
+            r"StreamTitle='(.*?)';StreamUrl=",
             metadata
         )
 
@@ -665,7 +684,7 @@ def create_embed(artist, title, dj, album_art):
 
     embed.add_field(
         name="📻 Listen Live",
-        value="[▶ Click Here To Listen](https://thechatbarcommunity.org/radio-player/)",
+        value="[▶ Click Here To Listen](https://worker-production-fc98.up.railway.app/player)",
         inline=True
     )
     # LIVE REQUESTS

@@ -617,6 +617,12 @@
     <div class="empty-requests" id="reqEmpty">No requests yet 🎵</div>
   </div>
 
+  <!-- Recently Played -->
+  <div class="section-label">Recently Played</div>
+  <div class="requests-box" id="recentBox">
+    <div class="empty-requests">Nothing played yet 🎵</div>
+  </div>
+
   <!-- Request form -->
   <div class="req-form">
     <div class="req-form-title">🎵 Request a Song</div>
@@ -812,7 +818,29 @@ function renderNowPlaying(artist, title, albumArt) {
   }
 }
 
-function esc(str) {
+function renderRecent(recent) {
+  const box = document.getElementById("recentBox");
+  box.innerHTML = "";
+  if (!recent || recent.length === 0) {
+    box.innerHTML = '<div class="empty-requests">Nothing played yet 🎵</div>';
+    return;
+  }
+  // Show most recent first
+  [...recent].reverse().forEach((r, i) => {
+    const item = document.createElement("div");
+    item.className = "request-item";
+    item.innerHTML = `
+      <div class="req-num" style="color:var(--text-dim);font-size:14px;">${i + 1}</div>
+      <div class="req-info">
+        <div class="req-song">${esc(r.title)}</div>
+        <div class="req-meta">${esc(r.artist)}</div>
+      </div>
+    `;
+    box.appendChild(item);
+  });
+}
+
+
   if (!str) return "";
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
@@ -837,6 +865,7 @@ async function pollStatus() {
       renderDJ(data.dj);
       renderNowPlaying(data.artist, data.title, data.album_art);
       renderRequests(data.requests || []);
+      renderRecent(data.recent || []);
     }
   } catch (_) {}
 }

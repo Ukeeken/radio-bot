@@ -144,7 +144,8 @@ def status():
         "dj": manual_dj,
         "artist": last_song.split(" - ")[0] if last_song and " - " in last_song else "Unknown",
         "title": last_song.split(" - ", 1)[1] if last_song and " - " in last_song else "Unknown",
-        "requests": song_requests[-3:]
+        "requests": song_requests[-3:],
+        "recent": recent_songs[:-1]  # exclude current song
     })
 
 @app.route("/request", methods=["POST"])
@@ -250,6 +251,7 @@ sp = spotipy.Spotify(
 
 manual_dj = None
 last_song = None
+recent_songs = []  # ADD THIS
 
 requests_updated = False
 force_refresh = False
@@ -1079,6 +1081,8 @@ async def song_loop():
                 should_update = False
 
                 if song_key != last_song:
+                    recent_songs.append({"artist": artist, "title": title})
+                    recent_songs[:] = recent_songs[-5:]
                     last_song = song_key
                     should_update = True
 
