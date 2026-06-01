@@ -209,6 +209,10 @@ def run_web():
 def player():
     return open("radio-player.html").read()
 
+@app.route("/schedule")
+def schedule():
+    return open("dj-schedule.html").read()
+
 # =========================
 # LOAD ENV
 # =========================

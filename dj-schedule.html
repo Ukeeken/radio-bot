@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DJ Schedule · Black Sheep Radio</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --red: #ff0033;
+    --red-dim: #cc0028;
+    --dark: #0a0a0b;
+    --surface: #111114;
+    --surface2: #18181c;
+    --surface3: #212126;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #f0f0f0;
+    --text-muted: #888;
+    --text-dim: #555;
+  }
+
+  html, body {
+    min-height: 100%;
+    background: var(--dark);
+    color: var(--text);
+    font-family: 'Barlow', sans-serif;
+    font-weight: 400;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.18) 2px,
+      rgba(0,0,0,0.18) 4px
+    );
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  .bg-glow {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+  }
+  .bg-glow::after {
+    content: '';
+    position: absolute;
+    width: 700px;
+    height: 700px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,0,51,0.08) 0%, transparent 70%);
+    top: 30%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .page {
+    position: relative;
+    z-index: 1;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 4rem;
+  }
+
+  /* ─── NAV ─── */
+  .nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 3rem;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .nav-brand {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    font-size: 1.4rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: var(--text);
+    text-decoration: none;
+  }
+  .nav-brand span { color: var(--red); }
+
+  .nav-link {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    text-decoration: none;
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .nav-link:hover { color: var(--text); border-color: var(--border2); }
+  .nav-link.primary {
+    background: var(--red);
+    color: #fff;
+    border-color: var(--red);
+  }
+  .nav-link.primary:hover { background: var(--red-dim); border-color: var(--red-dim); }
+
+  /* ─── HEADER ─── */
+  .header {
+    text-align: center;
+    margin-bottom: 3rem;
+  }
+
+  .header-tag {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--red);
+    margin-bottom: 0.5rem;
+  }
+
+  .header-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    font-size: clamp(2.5rem, 7vw, 4rem);
+    text-transform: uppercase;
+    line-height: 0.95;
+    margin-bottom: 1rem;
+  }
+  .header-title span { color: var(--red); }
+
+  .header-sub {
+    font-size: 14px;
+    color: var(--text-muted);
+    font-weight: 300;
+  }
+
+  .tz-badge {
+    display: inline-block;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-top: 10px;
+  }
+
+  /* ─── DAY BLOCK ─── */
+  .day-block {
+    margin-bottom: 1.25rem;
+  }
+
+  .day-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 0.75rem;
+  }
+
+  .day-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    font-size: 1.1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text);
+  }
+
+  .day-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .today-tag {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--red);
+    background: rgba(255,0,51,0.1);
+    border: 1px solid rgba(255,0,51,0.25);
+    padding: 3px 8px;
+    border-radius: 3px;
+  }
+
+  /* ─── SHOW CARD ─── */
+  .show-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .show-card:hover {
+    border-color: var(--border2);
+    background: var(--surface2);
+  }
+  .show-card.today-show {
+    border-color: rgba(255,0,51,0.25);
+  }
+
+  .show-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: var(--surface3);
+    border: 1px solid var(--border2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--red);
+    flex-shrink: 0;
+    text-transform: uppercase;
+  }
+
+  .show-info { flex: 1; min-width: 0; }
+
+  .show-dj {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+
+  .show-name {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 300;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .show-time {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+    text-align: right;
+  }
+  .show-time .est {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    font-weight: 400;
+    text-align: right;
+  }
+
+  /* ─── FILL-IN NOTE ─── */
+  .fill-note {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--red);
+    border-radius: 0 8px 8px 0;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    font-style: italic;
+  }
+
+  /* ─── FOOTER NOTE ─── */
+  .foot-note {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--red);
+    border-radius: 0 10px 10px 0;
+    padding: 14px 18px;
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin-top: 2rem;
+  }
+
+  .footer {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    margin-top: 3rem;
+  }
+
+  /* ─── LIVE INDICATOR ─── */
+  .live-now {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--red);
+  }
+  .live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--red);
+    animation: blink 1.2s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  @media (max-width: 480px) {
+    .show-name { display: none; }
+    .nav { justify-content: center; }
+  }
+</style>
+</head>
+<body>
+<div class="bg-glow"></div>
+<div class="page">
+
+  <nav class="nav">
+    <a class="nav-brand" href="/player">Black <span>Sheep</span> Radio</a>
+    <a class="nav-link primary" href="/player">▶ Listen Live</a>
+  </nav>
+
+  <div class="header">
+    <div class="header-tag">Black Sheep Radio</div>
+    <h1 class="header-title">DJ <span>Schedule</span></h1>
+    <p class="header-sub">Live DJs every day of the week</p>
+    <div class="tz-badge">All times Eastern (ET)</div>
+  </div>
+
+  <div id="schedule"></div>
+
+  <div class="fill-note">
+    🎵 <strong>DJ Juvi</strong> — Pink Noise as a fill-in DJ on Fridays and surprise days!
+  </div>
+
+  <div class="foot-note">
+    At times our DJs will do an impromptu show, or we may have events going on. In these instances we will be sure to let everyone know via our social medias and announcements.
+  </div>
+
+  <div class="footer">© Black Sheep Radio · Live365 Stream</div>
+</div>
+
+<script>
+const SCHEDULE = [
+  {
+    day: "Monday",
+    shows: [
+      { dj: "DJ Hissy", time: "5:00 – 7:00pm", show: "You Never Know — oldies, dance, metal or something new!" }
+    ]
+  },
+  {
+    day: "Tuesday",
+    shows: [
+      { dj: "DJ Ellie", time: "6:00 – 8:00pm", show: "The Tuesday Night Country HoDown" }
+    ]
+  },
+  {
+    day: "Wednesday",
+    shows: [
+      { dj: "DJ Chrissy", time: "12:00 – 2:00pm", show: "Echoes & Endings — A story time set" },
+      { dj: "DJ Kenny",   time: "2:00 – 4:00pm",  show: "Punk'd Up and Plugg'd In" }
+    ]
+  },
+  {
+    day: "Thursday",
+    shows: [
+      { dj: "DJ Mysterio", time: "12:30 – 4:30pm", show: "The Welsh Dragon — Music Through the Decades" }
+    ]
+  },
+  {
+    day: "Friday",
+    shows: [
+      { dj: "DJ Chrissy",  time: "12:00 – 2:00pm", show: "Smoke and Shadows — A Jazz Show" },
+      { dj: "DJ Kenny",    time: "2:00 – 4:00pm",  show: "Punk'd Up and Plugg'd In" },
+      { dj: "DJ Ellie",    time: "4:00 – 6:00pm",  show: "Fridays Unleashed — A Rock Mix" }
+    ]
+  },
+  {
+    day: "Saturday",
+    shows: [
+      { dj: "DJ Avlee", time: "9:00 – 11:00pm", show: "Late Night with Avlee" }
+    ]
+  },
+  {
+    day: "Sunday",
+    shows: [
+      { dj: "DJ Mysterio", time: "12:30 – 4:30pm", show: "Music Through the Decades" },
+      { dj: "DJ Avlee",    time: "8:00 – 10:00pm", show: "80s Rock Plus" }
+    ]
+  }
+];
+
+const DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+
+function initials(name) {
+  return name.replace("DJ ", "").charAt(0).toUpperCase();
+}
+
+function isLiveNow(timeStr) {
+  // Parse "H:MM – H:MMpm" style
+  try {
+    const now = new Date();
+    // Get current ET time
+    const etStr = now.toLocaleString("en-US", { timeZone: "America/New_York" });
+    const et = new Date(etStr);
+    const nowMins = et.getHours() * 60 + et.getMinutes();
+
+    const parts = timeStr.replace(/\s/g, "").split("–");
+    if (parts.length < 2) return false;
+
+    function parseMins(t) {
+      const isPM = t.toLowerCase().includes("pm");
+      const isAM = t.toLowerCase().includes("am");
+      t = t.replace(/[apm]/gi, "");
+      const [h, m] = t.split(":").map(Number);
+      let hours = h;
+      if (isPM && hours < 12) hours += 12;
+      if (isAM && hours === 12) hours = 0;
+      return hours * 60 + (m || 0);
+    }
+
+    // end time has am/pm, start may not — infer from end
+    const endRaw = parts[1];
+    const startRaw = parts[0];
+    const endMins = parseMins(endRaw);
+    let startMins = parseMins(startRaw);
+    // if start has no am/pm marker, inherit from end
+    if (!/[apm]/i.test(startRaw)) {
+      const endH = Math.floor(endMins / 60);
+      const startH = parseInt(startRaw.split(":")[0]);
+      if (startH > endH) {
+        // crosses noon — keep as-is (rare)
+      }
+      // just use same period as end for simplicity
+      startMins = parseMins(startRaw + (endRaw.toLowerCase().includes("pm") ? "pm" : "am"));
+    }
+
+    return nowMins >= startMins && nowMins < endMins;
+  } catch { return false; }
+}
+
+function render() {
+  const nowET = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
+  const todayIdx = nowET.getDay(); // 0=Sun
+  const todayName = DAYS[todayIdx];
+
+  const container = document.getElementById("schedule");
+
+  SCHEDULE.forEach(({ day, shows }) => {
+    const isToday = day === todayName;
+
+    const block = document.createElement("div");
+    block.className = "day-block";
+
+    const header = document.createElement("div");
+    header.className = "day-header";
+    header.innerHTML = `
+      <div class="day-name">${day}</div>
+      ${isToday ? '<div class="today-tag">Today</div>' : ''}
+      <div class="day-line"></div>
+    `;
+    block.appendChild(header);
+
+    shows.forEach(({ dj, time, show }) => {
+      const live = isToday && isLiveNow(time);
+      const card = document.createElement("div");
+      card.className = "show-card" + (isToday ? " today-show" : "");
+      card.innerHTML = `
+        <div class="show-avatar">${initials(dj)}</div>
+        <div class="show-info">
+          <div class="show-dj">${dj}</div>
+          <div class="show-name">${show}</div>
+        </div>
+        <div class="show-time">
+          ${live ? '<div class="live-now"><div class="live-dot"></div>On Air</div>' : ''}
+          ${time}
+          <span class="est">ET</span>
+        </div>
+      `;
+      block.appendChild(card);
+    });
+
+    container.appendChild(block);
+  });
+}
+
+render();
+</script>
+</body>
+</html>
