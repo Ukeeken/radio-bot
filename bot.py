@@ -680,7 +680,7 @@ def create_embed(artist, title, dj, album_art):
 
     embed.add_field(
         name="📻 Listen Live",
-        value="[▶ Click Here To Listen](https://thechatbarcommunity.org/radio-player/)",
+        value="[▶ Click Here To Listen](https://worker-production-fc98.up.railway.app/player)",
         inline=True
     )
     # LIVE REQUESTS
