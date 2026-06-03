@@ -140,12 +140,15 @@ def home():
 
 @app.route("/status")
 def status():
+    artist = last_song.split(" - ")[0] if last_song and " - " in last_song else "Unknown"
+    title = last_song.split(" - ", 1)[1] if last_song and " - " in last_song else "Unknown"
     return jsonify({
         "dj": manual_dj,
-        "artist": last_song.split(" - ")[0] if last_song and " - " in last_song else "Unknown",
-        "title": last_song.split(" - ", 1)[1] if last_song and " - " in last_song else "Unknown",
+        "artist": artist,
+        "title": title,
         "requests": song_requests[-3:],
-        "recent": recent_songs[:-1]  # exclude current song
+        "recent": recent_songs[:-1],
+        "album_art": get_album_art(f"{artist} {title}") if last_song else None
     })
 
 @app.route("/request", methods=["POST"])
