@@ -689,7 +689,7 @@ def create_embed(artist, title, dj, album_art):
 
     embed.add_field(
         name="📻 Listen Live",
-        value="[▶ Click Here To Listen](blacksheepradio.up.railway.app)",
+        value="[▶ Click Here To Listen]("https://blacksheepradio.up.railway.app/player")",
         inline=True
     )
     # LIVE REQUESTS
