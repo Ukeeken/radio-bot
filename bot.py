@@ -365,7 +365,7 @@ class RequestView(discord.ui.View):
             discord.ui.Button(
                 label="🎵 Request Song",
                 style=discord.ButtonStyle.link,
-                url="https://worker-production-fc98.up.railway.app"
+                url="blacksheepradio.up.railway.app"
             )
         )
 
@@ -689,7 +689,7 @@ def create_embed(artist, title, dj, album_art):
 
     embed.add_field(
         name="📻 Listen Live",
-        value="[▶ Click Here To Listen](https://worker-production-fc98.up.railway.app/player)",
+        value="[▶ Click Here To Listen](blacksheepradio.up.railway.app)",
         inline=True
     )
     # LIVE REQUESTS
