@@ -31,7 +31,6 @@
     overflow-x: hidden;
   }
 
-  /* ─── SCANLINE OVERLAY ─── */
   body::before {
     content: '';
     position: fixed;
@@ -47,7 +46,6 @@
     z-index: 1000;
   }
 
-  /* ─── ANIMATED BG PULSE ─── */
   .bg-glow {
     position: fixed;
     inset: 0;
@@ -72,7 +70,6 @@
     50% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
   }
 
-  /* ─── LAYOUT ─── */
   .page {
     position: relative;
     z-index: 1;
@@ -85,7 +82,6 @@
     gap: 0;
   }
 
-  /* ─── HEADER ─── */
   .station-tag {
     font-family: 'Barlow Condensed', sans-serif;
     font-weight: 700;
@@ -109,7 +105,6 @@
   }
   .station-name span { color: var(--red); }
 
-  /* ─── ALBUM ART ─── */
   .art-wrap {
     position: relative;
     width: clamp(200px, 40vw, 280px);
@@ -180,7 +175,6 @@
     50% { opacity: 0; }
   }
 
-  /* ─── NOW PLAYING ─── */
   .now-playing {
     text-align: center;
     max-width: 420px;
@@ -218,7 +212,6 @@
     text-overflow: ellipsis;
   }
 
-  /* ─── WAVEFORM VIZ ─── */
   .waveform {
     display: flex;
     align-items: center;
@@ -238,7 +231,6 @@
     to { transform: scaleY(1); }
   }
 
-  /* ─── PLAYER CONTROLS ─── */
   .player-card {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -324,7 +316,6 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* ─── DJ STRIP ─── */
   .dj-strip {
     display: flex;
     align-items: center;
@@ -354,10 +345,8 @@
   .dj-info { flex: 1; min-width: 0; }
   .dj-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); }
   .dj-name { font-size: 14px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
   .dj-strip.offline .dj-name { color: var(--text-dim); font-style: italic; }
 
-  /* ─── REQUESTS ─── */
   .section-label {
     font-family: 'Barlow Condensed', sans-serif;
     font-size: 10px;
@@ -429,7 +418,6 @@
     font-size: 13px;
   }
 
-  /* ─── REQUEST FORM ─── */
   .req-form {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -501,7 +489,6 @@
   }
   .form-msg.err { color: #ff6b6b; }
 
-  /* ─── FOOTER ─── */
   .footer {
     font-size: 11px;
     color: var(--text-dim);
@@ -510,7 +497,6 @@
     margin-top: 1rem;
   }
 
-  /* ─── MOBILE ─── */
   @media (max-width: 480px) {
     .form-grid { grid-template-columns: 1fr; }
     .form-input.full { grid-column: span 1; }
@@ -645,26 +631,25 @@
 
 <script>
 const STREAM_URL = "https://streaming.live365.com/a97529";
-const REQUEST_URL = "https://worker-production-fc98.up.railway.app/request";
-const BANNER = "https://i.imgur.com/tdsxn4c.png";
+const API_BASE   = "https://blacksheepradio.up.railway.app";
+const BANNER     = "https://i.imgur.com/tdsxn4c.png";
 
-const audio = document.getElementById("radioAudio");
-const playBtn = document.getElementById("playBtn");
-const playIcon = document.getElementById("playIcon");
+const audio     = document.getElementById("radioAudio");
+const playBtn   = document.getElementById("playBtn");
+const playIcon  = document.getElementById("playIcon");
 const volSlider = document.getElementById("volSlider");
-const volVal = document.getElementById("volVal");
-const npTitle = document.getElementById("npTitle");
-const npArtist = document.getElementById("npArtist");
-const artImg = document.getElementById("artImg");
-const djName = document.getElementById("djName");
-const djAvatar = document.getElementById("djAvatar");
-const djStrip = document.getElementById("djStrip");
+const volVal    = document.getElementById("volVal");
+const npTitle   = document.getElementById("npTitle");
+const npArtist  = document.getElementById("npArtist");
+const artImg    = document.getElementById("artImg");
+const djName    = document.getElementById("djName");
+const djAvatar  = document.getElementById("djAvatar");
+const djStrip   = document.getElementById("djStrip");
 const djLiveBadge = document.getElementById("djLiveBadge");
 const requestsBox = document.getElementById("requestsBox");
-const reqEmpty = document.getElementById("reqEmpty");
-const waveform = document.getElementById("waveform");
+const waveform  = document.getElementById("waveform");
 const submitBtn = document.getElementById("submitBtn");
-const formMsg = document.getElementById("formMsg");
+const formMsg   = document.getElementById("formMsg");
 
 // ─── WAVEFORM BUILD ───
 const NUM_BARS = 20;
@@ -722,9 +707,9 @@ volSlider.addEventListener("input", () => {
 
 // ─── REQUEST FORM ───
 submitBtn.addEventListener("click", async () => {
-  const song = document.getElementById("fSong").value.trim();
+  const song   = document.getElementById("fSong").value.trim();
   const artist = document.getElementById("fArtist").value.trim();
-  const user = document.getElementById("fUser").value.trim() || "Web Listener";
+  const user   = document.getElementById("fUser").value.trim() || "Web Listener";
   const server = document.getElementById("fServer").value.trim() || "Website";
 
   if (!song || !artist) {
@@ -742,7 +727,7 @@ submitBtn.addEventListener("click", async () => {
     fd.append("user", user);
     fd.append("server", server);
 
-    const res = await fetch(REQUEST_URL, { method: "POST", body: fd });
+    const res = await fetch(API_BASE + "/request", { method: "POST", body: fd });
     if (res.ok) {
       showMsg("✅ Request sent!");
       document.getElementById("fSong").value = "";
@@ -764,12 +749,7 @@ function showMsg(msg, err) {
   setTimeout(() => { formMsg.textContent = ""; formMsg.className = "form-msg"; }, 4000);
 }
 
-// ─── POLL STATUS FROM YOUR BOT ───
-// Since your Flask backend doesn't expose a JSON status endpoint,
-// we poll what we can. The code below is ready to consume a /status endpoint
-// if you add one (see README in this file).
-// For now we show a placeholder that updates when you add the endpoint.
-
+// ─── RENDER HELPERS ───
 function renderRequests(requests) {
   requestsBox.innerHTML = "";
   if (!requests || requests.length === 0) {
@@ -815,6 +795,8 @@ function renderNowPlaying(artist, title, albumArt) {
   }
   if (albumArt) {
     artImg.src = albumArt;
+  } else {
+    artImg.src = BANNER;
   }
 }
 
@@ -825,7 +807,6 @@ function renderRecent(recent) {
     box.innerHTML = '<div class="empty-requests">Nothing played yet 🎵</div>';
     return;
   }
-  // Show most recent first
   [...recent].reverse().forEach((r, i) => {
     const item = document.createElement("div");
     item.className = "request-item";
@@ -840,27 +821,15 @@ function renderRecent(recent) {
   });
 }
 
-
 function esc(str) {
   if (!str) return "";
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 // ─── POLL /status ───
-// Add this route to your Flask app (see instructions below):
-//
-//   @app.route("/status")
-//   def status():
-//       return jsonify({
-//           "dj": manual_dj,
-//           "artist": last_song.split(" - ")[0] if last_song and " - " in last_song else "Unknown",
-//           "title": last_song.split(" - ", 1)[1] if last_song and " - " in last_song else "Unknown",
-//           "requests": song_requests[-3:]
-//       })
-
 async function pollStatus() {
   try {
-    const res = await fetch("https://worker-production-fc98.up.railway.app/status");
+    const res = await fetch(API_BASE + "/status");
     if (res.ok) {
       const data = await res.json();
       renderDJ(data.dj);
@@ -871,11 +840,9 @@ async function pollStatus() {
   } catch (_) {}
 }
 
-// ─── INITIAL PLACEHOLDER ───
 npTitle.textContent = "Black Sheep Radio";
 npArtist.textContent = "Live Stream";
 
-// poll every 20 seconds
 pollStatus();
 setInterval(pollStatus, 20000);
 
@@ -903,7 +870,7 @@ function getTodayET() {
 
 function buildSchedule() {
   const list = document.getElementById("schedList");
-  if (list.children.length > 0) return; // already built
+  if (list.children.length > 0) return;
   const todayName = DAYS[getTodayET().getDay()];
 
   SCHEDULE.forEach(({ day, shows }) => {
@@ -938,7 +905,7 @@ function toggleSchedule() {
   schedOpen = !schedOpen;
   const panel = document.getElementById("schedPanel");
   const arrow = document.getElementById("schedArrow");
-  const btn = document.getElementById("schedBtn");
+  const btn   = document.getElementById("schedBtn");
   if (schedOpen) {
     buildSchedule();
     panel.style.display = "block";
