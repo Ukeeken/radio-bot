@@ -148,7 +148,7 @@ def status():
         "title": title,
         "requests": song_requests[-3:],
         "recent": recent_songs[:-1],
-        "album_art": get_album_art(f"{artist} {title}") if last_song else None
+        "album_art": last_album_art  # use cached value instead of calling Spotify
     })
  
 @app.route("/request", methods=["POST"])
@@ -590,7 +590,8 @@ def get_now_playing():
         bad_values = [
             "Live365",
             "Black Sheep Radio",
-            "Advertisement"
+            "Advertisement",
+            "OFF AIR"
         ]
  
         for bad in bad_values:
@@ -777,7 +778,8 @@ async def delete_old_message(guild_id):
 # =========================
 # POST SCROLLER
 # =========================
- 
+last_album_art = None  # add with other globals
+
 async def post_scroller(artist, title):
  
     dj = get_current_dj()
