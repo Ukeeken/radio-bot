@@ -733,11 +733,11 @@ def create_embed(artist, title, dj, album_art):
             inline=False
         )
  
-    embed.set_image(
+    embed.set_thumbnail(
         url=album_art or BANNER_URL
     )
  
-    embed.set_thumbnail(
+    embed.set_footer(
         text="Live365 Stream • Auto-updating"
     )
  
