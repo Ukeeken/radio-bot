@@ -273,6 +273,24 @@
   }
   .btn-play.paused svg { margin-left: 0; }
 
+  .btn-cast {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    cursor: pointer;
+    display: none; /* hidden until Cast API is available */
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, border-color 0.15s;
+    flex-shrink: 0;
+  }
+  .btn-cast:hover { background: var(--surface3); border-color: rgba(255,0,51,0.4); }
+  .btn-cast svg { width: 22px; height: 22px; fill: var(--text-muted); }
+  .btn-cast.casting svg { fill: var(--red); }
+  .btn-cast.available { display: flex; }
+
   .volume-row {
     display: flex;
     align-items: center;
@@ -576,9 +594,15 @@
   <!-- Player -->
   <div class="player-card">
     <div class="play-row">
+      <button class="btn-cast" id="castBtn" aria-label="Cast to Chromecast" title="Cast to TV">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M1 18v3h3c0-1.66-1.34-3-3-3zm0-4v2c2.76 0 5 2.24 5 5h2c0-3.87-3.13-7-7-7zm0-4v2c4.97 0 9 4.03 9 9h2c0-6.08-4.93-11-11-11zm20-7H3C1.9 3 1 3.9 1 5v3h2V5h18v14h-7v2h7c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>
+        </svg>
+      </button>
       <button class="btn-play paused" id="playBtn" aria-label="Play / Pause">
         <svg id="playIcon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
       </button>
+      <div style="width:44px;flex-shrink:0;"></div>
     </div>
     <div class="volume-row">
       <span class="volume-icon">🔈</span>
@@ -629,6 +653,7 @@
   <source src="https://streaming.live365.com/a97529" type="audio/mpeg">
 </audio>
 
+<script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
 <script>
 const STREAM_URL = "https://streaming.live365.com/a97529";
 const API_BASE   = "https://blacksheepradio.up.railway.app";
@@ -703,6 +728,62 @@ volSlider.addEventListener("input", () => {
   const v = parseInt(volSlider.value);
   audio.volume = v / 100;
   volVal.textContent = v;
+});
+
+// ─── CHROMECAST ───
+const castBtn = document.getElementById("castBtn");
+let castSession = null;
+
+window['__onGCastApiAvailable'] = function(isAvailable) {
+  if (!isAvailable) return;
+
+  cast.framework.CastContext.getInstance().setOptions({
+    receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
+    autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED
+  });
+
+  castBtn.classList.add("available");
+
+  const context = cast.framework.CastContext.getInstance();
+
+  context.addEventListener(
+    cast.framework.CastContextEventType.SESSION_STATE_CHANGED,
+    (event) => {
+      const s = event.sessionState;
+      if (s === cast.framework.SessionState.SESSION_STARTED ||
+          s === cast.framework.SessionState.SESSION_RESUMED) {
+        castSession = context.getCurrentSession();
+        castBtn.classList.add("casting");
+        castBtn.title = "Stop casting";
+        loadCastMedia();
+      } else if (s === cast.framework.SessionState.SESSION_ENDED) {
+        castSession = null;
+        castBtn.classList.remove("casting");
+        castBtn.title = "Cast to TV";
+      }
+    }
+  );
+};
+
+function loadCastMedia() {
+  if (!castSession) return;
+  const mediaInfo = new chrome.cast.media.MediaInfo(STREAM_URL, "audio/mpeg");
+  mediaInfo.metadata = new chrome.cast.media.MusicTrackMediaMetadata();
+  mediaInfo.metadata.title = npTitle.textContent || "Black Sheep Radio";
+  mediaInfo.metadata.artist = npArtist.textContent || "Live Stream";
+  mediaInfo.metadata.images = [{ url: artImg.src }];
+  const request = new chrome.cast.media.LoadRequest(mediaInfo);
+  castSession.loadMedia(request).catch(e => console.warn("Cast load error:", e));
+}
+
+castBtn.addEventListener("click", () => {
+  if (castSession) {
+    cast.framework.CastContext.getInstance().endCurrentSession(true);
+  } else {
+    cast.framework.CastContext.getInstance().requestSession().catch(e => {
+      if (e !== "cancel") console.warn("Cast session error:", e);
+    });
+  }
 });
 
 // ─── REQUEST FORM ───
