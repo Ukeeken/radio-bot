@@ -18,6 +18,9 @@ from flask_cors import CORS
 flask_thread = None
  
 requests_enabled = True
+
+# guild_id -> user_id who started radio
+voice_owner = {}
  
 app = Flask(__name__)
 CORS(app)  # ✅ AFTER app is created
@@ -355,7 +358,23 @@ async def is_dj_or_admin(interaction: discord.Interaction):
         traceback.print_exc()
  
         return False
- 
+
+async def can_control_radio(interaction: discord.Interaction):
+
+    guild_id = interaction.guild.id
+
+    # DJs and admins always allowed
+    if await is_dj_or_admin(interaction):
+        return True
+
+    # Original starter allowed
+    owner_id = voice_owner.get(guild_id)
+
+    if owner_id == interaction.user.id:
+        return True
+
+    return False
+
 # =========================
 # REQUEST BUTTON
 # =========================
@@ -372,7 +391,170 @@ class RequestView(discord.ui.View):
                 url="https://blacksheepradio.up.railway.app"
             )
         )
- 
+
+class RadioVoiceView(discord.ui.View):
+
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(
+        label="📻 Join Radio",
+        style=discord.ButtonStyle.green,
+        custom_id="radio_join"
+    )
+    async def join_radio(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+
+        if not interaction.user.voice:
+            await interaction.response.send_message(
+                "❌ Join a voice channel first.",
+                ephemeral=True
+            )
+            return
+
+        channel = interaction.user.voice.channel
+
+        try:
+
+            vc = interaction.guild.voice_client
+
+            if vc is None:
+
+                vc = await channel.connect()
+
+            elif vc.channel != channel:
+                
+                if not await can_control_radio(interaction):
+
+                    await interaction.response.send_message(
+                        "❌ Only the controller, DJs, or admins can move the stream.",
+                        ephemeral=True
+                    )
+                    return
+
+                await vc.move_to(channel)
+
+            if not vc.is_playing():
+
+                source = discord.FFmpegPCMAudio(
+                    STREAM_URL,
+                    before_options=(
+                        "-reconnect 1 "
+                        "-reconnect_streamed 1 "
+                        "-reconnect_at_eof 1 "
+                        "-reconnect_delay_max 5"
+                    ),
+                    options="-vn"
+                )
+
+                def after_play(error):
+                    if error:
+                        print(f"VOICE ERROR: {error}")
+
+                vc.play(source, after=after_play)
+
+                voice_owner[interaction.guild.id] = interaction.user.id
+
+            await interaction.response.send_message(
+                f"📻 Streaming Black Sheep Radio in **{channel.name}**",
+                ephemeral=True
+            )
+
+        except Exception as e:
+
+            await interaction.response.send_message(
+                f"❌ Error: {e}",
+                ephemeral=True
+            )
+
+    @discord.ui.button(
+    label="🔄 Move To My Channel",
+    style=discord.ButtonStyle.blurple,
+    custom_id="radio_move"
+)
+    async def move_radio(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+
+        if not await can_control_radio(interaction):
+
+            await interaction.response.send_message(
+                "❌ Only the radio starter, DJs, or admins can move the stream.",
+                ephemeral=True
+            )
+            return
+
+        if not interaction.user.voice:
+
+            await interaction.response.send_message(
+                "❌ Join a voice channel first.",
+                ephemeral=True
+            )
+            return
+
+        vc = interaction.guild.voice_client
+
+        if not vc:
+
+            await interaction.response.send_message(
+                "❌ Radio isn't playing.",
+                ephemeral=True
+            )
+            return
+
+        await vc.move_to(interaction.user.voice.channel)
+
+        await interaction.response.send_message(
+            f"📻 Moved to **{interaction.user.voice.channel.name}**",
+            ephemeral=True
+        )
+
+    @discord.ui.button(
+        label="⏹ Stop Radio",
+        style=discord.ButtonStyle.red,
+        custom_id="radio_stop"
+    )
+    async def stop_radio(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+
+        if not await can_control_radio(interaction):
+
+            await interaction.response.send_message(
+                "❌ Only the radio starter, DJs, or admins can stop the stream.",
+                ephemeral=True
+            )
+            return
+
+        vc = interaction.guild.voice_client
+
+        if vc:
+
+            guild_id = interaction.guild.id
+
+            voice_owner.pop(guild_id, None)
+
+            await vc.disconnect()
+
+            await interaction.response.send_message(
+                "📻 Radio stopped.",
+                ephemeral=True
+            )
+
+        else:
+
+            await interaction.response.send_message(
+                "❌ Radio isn't playing.",
+                ephemeral=True
+            )
+
 class DJPanel(discord.ui.View):
  
     def __init__(self):
@@ -433,7 +615,7 @@ class DJPanel(discord.ui.View):
                 ephemeral=True
             )
             return
-    
+     
         global manual_dj
         global last_song
  
@@ -782,6 +964,8 @@ last_album_art = None  # add with other globals
 
 async def post_scroller(artist, title):
  
+    global last_album_art
+    
     dj = get_current_dj()
  
     if not dj:
@@ -789,6 +973,8 @@ async def post_scroller(artist, title):
  
     # FIX: use async version so Spotify never blocks the event loop
     album_art = await get_album_art_async(f"{artist} {title}") or BANNER_URL
+
+    last_album_art = album_art
  
     embed = create_embed(artist, title, dj, album_art)
  
@@ -1048,7 +1234,31 @@ async def dj_panel(interaction: discord.Interaction):
             )
         except:
             pass
- 
+
+@tree.command(
+    name="radio_panel",
+    description="Post radio listener controls"
+)
+async def radio_panel(
+    interaction: discord.Interaction
+):
+
+    embed = discord.Embed(
+        title="📻 Black Sheep Radio",
+        description=(
+            "Listen to Black Sheep Radio directly in voice chat.\n\n"
+            "📻 Join Radio\n"
+            "🔄 Move To My Channel\n"
+            "⏹ Stop Radio"
+        ),
+        color=0xff0033
+    )
+
+    await interaction.response.send_message(
+        embed=embed,
+        view=RadioVoiceView()
+    )
+
 # =========================
 # SONG LOOP
 # =========================
@@ -1124,6 +1334,7 @@ async def on_ready():
  
         client.add_view(RequestView())
         client.add_view(DJPanel())
+        client.add_view(RadioVoiceView())
  
         if not web_started:
  
@@ -1155,7 +1366,25 @@ async def on_ready():
  
         print("ON_READY ERROR:")
         traceback.print_exc()
- 
+
+@client.event
+async def on_voice_state_update(member, before, after):
+
+    # only care about the bot itself
+    if member.id != client.user.id:
+        return
+
+    # bot disconnected from voice
+    if before.channel and after.channel is None:
+
+        guild_id = member.guild.id
+
+        voice_owner.pop(guild_id, None)
+
+        print(
+            f"Voice ownership cleared for guild {guild_id}"
+        )
+
 @client.event
 async def on_disconnect():
     print("Bot disconnected from Discord")
