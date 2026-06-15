@@ -470,9 +470,13 @@ class RadioVoiceView(discord.ui.View):
             )
 
         except Exception as e:
+            import traceback
+
+            print("VOICE JOIN ERROR:")
+            traceback.print_exc()
 
             await interaction.response.send_message(
-                f"❌ Error: {e}",
+                f"❌ Error: {type(e).__name__}: {e}",
                 ephemeral=True
             )
 
