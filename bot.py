@@ -15,6 +15,8 @@ import threading
 import traceback
 from flask_cors import CORS
 
+print(discord.__version__)
+
 try:
     import nacl
     print("PyNaCl OK:", nacl.__version__)
@@ -1042,7 +1044,38 @@ async def clear_all_scrollers():
 # =========================
 # SLASH COMMANDS
 # =========================
- 
+
+@tree.command(name="test_voice")
+async def test_voice(interaction: discord.Interaction):
+
+    if not interaction.user.voice:
+        await interaction.response.send_message(
+            "Join a voice channel first.",
+            ephemeral=True
+        )
+        return
+
+    try:
+        vc = await interaction.user.voice.channel.connect()
+
+        await interaction.response.send_message(
+            "Connected!",
+            ephemeral=True
+        )
+
+        await asyncio.sleep(10)
+
+        await vc.disconnect()
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+
+        await interaction.response.send_message(
+            f"{type(e).__name__}: {e}",
+            ephemeral=True
+        )
+
 @tree.command(
     name="setup_radio",
     description="Set radio channel"
