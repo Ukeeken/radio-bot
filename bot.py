@@ -14,6 +14,12 @@ from flask import Flask, request, jsonify
 import threading
 import traceback
 from flask_cors import CORS
+
+try:
+    import nacl
+    print("PyNaCl OK:", nacl.__version__)
+except Exception as e:
+    print("PyNaCl FAILED:", e)
  
 flask_thread = None
  
