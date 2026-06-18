@@ -348,7 +348,7 @@ async def is_dj_or_admin(interaction: discord.Interaction):
     try:
 
         # Bot owner
-        if interaction.user.id == OWNER_ID:
+        if interaction.user.id == ADMIN_IDS:
             return True
 
         # Must be in a server
