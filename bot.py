@@ -270,6 +270,12 @@ STREAM_URL = "https://streaming.live365.com/a97529"
 BANNER_URL = "https://i.imgur.com/tdsxn4c.png"
 OWNER_ID = 1041766723717693450
 
+# Add any extra user IDs here who bypass role requirements
+ADMIN_IDS = {
+    1041766723717693450,  # you
+    767825558113091639,   # other person — replace with their real ID
+}
+
 # FIX: retries=0 prevents spotipy from calling time.sleep() on rate limit,
 # which would block the async event loop and kill the Discord heartbeat.
 sp = spotipy.Spotify(
