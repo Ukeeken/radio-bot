@@ -478,13 +478,14 @@ class RadioVoiceView(discord.ui.View):
                 source = discord.FFmpegPCMAudio(
                     STREAM_URL,
                     before_options=(
+                        "-user_agent \"VLC/3.0.18\" "
                         "-reconnect 1 "
                         "-reconnect_streamed 1 "
                         "-reconnect_at_eof 1 "
                         "-reconnect_delay_max 5"
                     ),
-                    options="-vn"
-                    stderr=subprocess.PIPE  # capture stderr instead of discarding it
+                    options="-vn",
+                    stderr=subprocess.PIPE
                 )
 
                 def after_play(error):
@@ -495,12 +496,12 @@ class RadioVoiceView(discord.ui.View):
 
                 vc.play(source, after=after_play)
 
-                # Temporary debug — log ffmpeg's stderr after disconnect/error
+                # TEMP DEBUG: dump ffmpeg's stderr so we can see the real failure reason
                 if source._process and source._process.stderr:
-                    threading.Thread(
-                        target=lambda: print("FFMPEG STDERR:", source._process.stderr.read().decode(errors="ignore")),
-                        daemon=True
-                    ).start()
+                    def log_stderr():
+                        output = source._process.stderr.read().decode(errors="ignore")
+                        print(f"FFMPEG STDERR (guild {interaction.guild.id}):\n{output}")
+                    threading.Thread(target=log_stderr, daemon=True).start()
 
                 voice_owner[interaction.guild.id] = interaction.user.id
 
