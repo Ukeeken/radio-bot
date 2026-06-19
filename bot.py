@@ -550,6 +550,17 @@ class RadioVoiceView(discord.ui.View):
 
         vc = interaction.guild.voice_client
 
+        if vc is not None and not vc.is_connected():
+            # stale/broken voice client — force cleanup before reconnecting
+            try:
+                await vc.disconnect(force=True)
+            except Exception:
+                pass
+            vc = None
+
+        if vc is None:
+            vc = await channel.connect()
+
         if not vc:
 
             await interaction.response.send_message(
