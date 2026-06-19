@@ -14,6 +14,7 @@ from flask import Flask, request, jsonify
 import threading
 import traceback
 from flask_cors import CORS
+import subprocess
 
 print(discord.__version__)
 
@@ -483,13 +484,23 @@ class RadioVoiceView(discord.ui.View):
                         "-reconnect_delay_max 5"
                     ),
                     options="-vn"
+                    stderr=subprocess.PIPE  # capture stderr instead of discarding it
                 )
 
                 def after_play(error):
                     if error:
                         print(f"VOICE ERROR: {error}")
+                    else:
+                        print(f"Playback ended cleanly for guild {interaction.guild.id} (no error reported)")
 
                 vc.play(source, after=after_play)
+
+                # Temporary debug — log ffmpeg's stderr after disconnect/error
+                if source._process and source._process.stderr:
+                    threading.Thread(
+                        target=lambda: print("FFMPEG STDERR:", source._process.stderr.read().decode(errors="ignore")),
+                        daemon=True
+                    ).start()
 
                 voice_owner[interaction.guild.id] = interaction.user.id
 
