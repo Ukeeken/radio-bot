@@ -14,7 +14,6 @@ from flask import Flask, request, jsonify
 import threading
 import traceback
 from flask_cors import CORS
-import subprocess
 
 print(discord.__version__)
 
@@ -271,12 +270,6 @@ STREAM_URL = "https://streaming.live365.com/a97529"
 BANNER_URL = "https://i.imgur.com/tdsxn4c.png"
 OWNER_ID = 1041766723717693450
 
-# Add any extra user IDs here who bypass role requirements
-ADMIN_IDS = {
-    1041766723717693450,  # you
-    767825558113091639,   # other person — replace with their real ID
-}
-
 # FIX: retries=0 prevents spotipy from calling time.sleep() on rate limit,
 # which would block the async event loop and kill the Discord heartbeat.
 sp = spotipy.Spotify(
@@ -349,7 +342,7 @@ async def is_dj_or_admin(interaction: discord.Interaction):
     try:
 
         # Bot owner
-        if interaction.user.id == ADMIN_IDS:
+        if interaction.user.id == OWNER_ID:
             return True
 
         # Must be in a server
@@ -451,21 +444,34 @@ class RadioVoiceView(discord.ui.View):
             )
             return
 
+        # FIX: defer immediately — voice handshakes can take 10-30s under
+        # retry/backoff, which blows past Discord's 3-second initial response
+        # window and causes "Unknown interaction" 404s. Deferring buys time.
+        await interaction.response.defer(ephemeral=True)
+
         channel = interaction.user.voice.channel
 
         try:
 
             vc = interaction.guild.voice_client
 
+            # FIX: clean up stale/disconnected voice clients before reconnecting
+            if vc is not None and not vc.is_connected():
+                try:
+                    await vc.disconnect(force=True)
+                except Exception:
+                    pass
+                vc = None
+
             if vc is None:
 
-                vc = await channel.connect()
+                vc = await channel.connect(timeout=30, reconnect=True)
 
             elif vc.channel != channel:
 
                 if not await can_control_radio(interaction):
 
-                    await interaction.response.send_message(
+                    await interaction.followup.send(
                         "❌ Only the controller, DJs, or admins can move the stream.",
                         ephemeral=True
                     )
@@ -484,8 +490,7 @@ class RadioVoiceView(discord.ui.View):
                         "-reconnect_at_eof 1 "
                         "-reconnect_delay_max 5"
                     ),
-                    options="-vn",
-                    stderr=subprocess.PIPE
+                    options="-vn"
                 )
 
                 def after_play(error):
@@ -496,16 +501,9 @@ class RadioVoiceView(discord.ui.View):
 
                 vc.play(source, after=after_play)
 
-                # TEMP DEBUG: dump ffmpeg's stderr so we can see the real failure reason
-                if source._process and source._process.stderr:
-                    def log_stderr():
-                        output = source._process.stderr.read().decode(errors="ignore")
-                        print(f"FFMPEG STDERR (guild {interaction.guild.id}):\n{output}")
-                    threading.Thread(target=log_stderr, daemon=True).start()
-
                 voice_owner[interaction.guild.id] = interaction.user.id
 
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"📻 Streaming Black Sheep Radio in **{channel.name}**",
                 ephemeral=True
             )
@@ -516,7 +514,7 @@ class RadioVoiceView(discord.ui.View):
             print("VOICE JOIN ERROR:")
             traceback.print_exc()
 
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"❌ Error: {type(e).__name__}: {e}",
                 ephemeral=True
             )
@@ -550,17 +548,6 @@ class RadioVoiceView(discord.ui.View):
 
         vc = interaction.guild.voice_client
 
-        if vc is not None and not vc.is_connected():
-            # stale/broken voice client — force cleanup before reconnecting
-            try:
-                await vc.disconnect(force=True)
-            except Exception:
-                pass
-            vc = None
-
-        if vc is None:
-            vc = await channel.connect()
-
         if not vc:
 
             await interaction.response.send_message(
@@ -569,12 +556,22 @@ class RadioVoiceView(discord.ui.View):
             )
             return
 
-        await vc.move_to(interaction.user.voice.channel)
+        # FIX: defer before move_to in case the voice handshake is slow
+        await interaction.response.defer(ephemeral=True)
 
-        await interaction.response.send_message(
-            f"📻 Moved to **{interaction.user.voice.channel.name}**",
-            ephemeral=True
-        )
+        try:
+            await vc.move_to(interaction.user.voice.channel)
+
+            await interaction.followup.send(
+                f"📻 Moved to **{interaction.user.voice.channel.name}**",
+                ephemeral=True
+            )
+        except Exception as e:
+            traceback.print_exc()
+            await interaction.followup.send(
+                f"❌ Error: {type(e).__name__}: {e}",
+                ephemeral=True
+            )
 
     @discord.ui.button(
         label="⏹ Stop Radio",
@@ -599,16 +596,25 @@ class RadioVoiceView(discord.ui.View):
 
         if vc:
 
+            # FIX: defer before disconnect in case it's slow
+            await interaction.response.defer(ephemeral=True)
+
             guild_id = interaction.guild.id
 
             voice_owner.pop(guild_id, None)
 
-            await vc.disconnect()
-
-            await interaction.response.send_message(
-                "📻 Radio stopped.",
-                ephemeral=True
-            )
+            try:
+                await vc.disconnect(force=True)
+                await interaction.followup.send(
+                    "📻 Radio stopped.",
+                    ephemeral=True
+                )
+            except Exception as e:
+                traceback.print_exc()
+                await interaction.followup.send(
+                    f"❌ Error: {type(e).__name__}: {e}",
+                    ephemeral=True
+                )
 
         else:
 
@@ -1123,10 +1129,15 @@ async def test_voice(interaction: discord.Interaction):
         )
         return
 
-    try:
-        vc = await interaction.user.voice.channel.connect()
+    # FIX: defer immediately — voice handshakes can take 10-30s under
+    # retry/backoff, which blows past Discord's 3-second initial response
+    # window and causes "Unknown interaction" 404s. Deferring buys time.
+    await interaction.response.defer(ephemeral=True)
 
-        await interaction.response.send_message(
+    try:
+        vc = await interaction.user.voice.channel.connect(timeout=30, reconnect=True)
+
+        await interaction.followup.send(
             "Connected!",
             ephemeral=True
         )
@@ -1139,7 +1150,7 @@ async def test_voice(interaction: discord.Interaction):
         import traceback
         traceback.print_exc()
 
-        await interaction.response.send_message(
+        await interaction.followup.send(
             f"{type(e).__name__}: {e}",
             ephemeral=True
         )
