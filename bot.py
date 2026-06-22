@@ -1,6 +1,7 @@
 song_requests = []
 from dotenv import load_dotenv
 import os
+import shutil
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 import discord
@@ -16,6 +17,14 @@ import traceback
 from flask_cors import CORS
 
 print(discord.__version__)
+
+# FIX: diagnostic check so logs immediately confirm whether ffmpeg is on PATH,
+# instead of finding out only when a user clicks Join Radio
+ffmpeg_path = shutil.which("ffmpeg")
+if ffmpeg_path:
+    print(f"FFMPEG CHECK: FOUND at {ffmpeg_path}")
+else:
+    print("FFMPEG CHECK: NOT FOUND — voice streaming will fail until this is fixed")
 
 try:
     import nacl
