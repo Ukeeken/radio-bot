@@ -207,7 +207,8 @@ def request_song():
                 "song": song,
                 "user": user,
                 "server": server,
-                "source": "web"
+                "source": "web",
+                "songs_since_added": 0  # FIX: tracked for auto-expiry/removal
             })
 
             song_requests[:] = song_requests[-3:]
@@ -829,6 +830,70 @@ async def notify_dj_of_request(song, artist, user, server):
     except Exception as e:
         print(f"Error DMing DJ {manual_dj_id}: {type(e).__name__}: {e}")
 
+
+# FIX: normalize text for fuzzy matching — lowercase, strip punctuation/extra spaces
+def _normalize_for_match(text):
+
+    if not text:
+        return ""
+
+    text = text.lower().strip()
+
+    # remove common punctuation that varies between "Don't Stop" vs "Dont Stop" etc.
+    text = re.sub(r"[^\w\s]", "", text)
+
+    # collapse multiple spaces
+    text = re.sub(r"\s+", " ", text)
+
+    return text.strip()
+
+
+def _is_fuzzy_match(a, b):
+    """Loose match: normalized strings are equal, or one contains the other."""
+
+    a_norm = _normalize_for_match(a)
+    b_norm = _normalize_for_match(b)
+
+    if not a_norm or not b_norm:
+        return False
+
+    return a_norm == b_norm or a_norm in b_norm or b_norm in a_norm
+
+
+# FIX: remove requests once the matching song actually plays, and age out
+# requests that never match after a few song changes (covers vague/typo'd requests)
+MAX_SONGS_BEFORE_EXPIRY = 5
+
+
+def remove_fulfilled_or_expired_requests(playing_artist, playing_title):
+
+    global song_requests
+
+    with lock:
+
+        still_pending = []
+
+        for req in song_requests:
+
+            artist_match = _is_fuzzy_match(req.get("artist", ""), playing_artist)
+            title_match = _is_fuzzy_match(req.get("song", ""), playing_title)
+
+            if artist_match and title_match:
+                # FIX: request fulfilled — drop it from the list
+                print(f"Request fulfilled, removing: {req.get('artist')} - {req.get('song')}")
+                continue
+
+            # not matched this round — bump its age, drop if too old
+            req["songs_since_added"] = req.get("songs_since_added", 0) + 1
+
+            if req["songs_since_added"] >= MAX_SONGS_BEFORE_EXPIRY:
+                print(f"Request expired (unmatched after {MAX_SONGS_BEFORE_EXPIRY} songs), removing: {req.get('artist')} - {req.get('song')}")
+                continue
+
+            still_pending.append(req)
+
+        song_requests[:] = still_pending
+
 # =========================
 # LIVE365 METADATA
 # =========================
@@ -1377,7 +1442,8 @@ async def request_song_command(
             "user_id": interaction.user.id,
             "server": interaction.guild.name if interaction.guild else "DM",
             "server_id": interaction.guild.id if interaction.guild else 0,
-            "source": "discord"
+            "source": "discord",
+            "songs_since_added": 0  # FIX: tracked for auto-expiry/removal
         })
 
         song_requests[:] = song_requests[-3:]
@@ -1501,6 +1567,12 @@ async def song_loop():
                     recent_songs[:] = recent_songs[-5:]
                     last_song = song_key
                     should_update = True
+
+                    # FIX: auto-remove any request that matches the song now
+                    # playing, and age out requests that never got matched
+                    if song_requests:
+                        remove_fulfilled_or_expired_requests(artist, title)
+                        requests_updated = True
 
                 if requests_updated or force_refresh:
                     should_update = True
