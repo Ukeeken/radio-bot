@@ -17,9 +17,9 @@
     --surface3: #212126;
     --border: rgba(255,255,255,0.08);
     --border2: rgba(255,255,255,0.14);
-    --text: #f0f0f0;
-    --text-muted: #888;
-    --text-dim: #555;
+    --text: #ffffff;
+    --text-muted: #b8b8bc;
+    --text-dim: #8a8a90;
   }
 
   html, body {
@@ -85,7 +85,7 @@
   .station-tag {
     font-family: 'Barlow Condensed', sans-serif;
     font-weight: 700;
-    font-size: 11px;
+    font-size: 13px;
     letter-spacing: 0.22em;
     text-transform: uppercase;
     color: var(--red);
@@ -183,10 +183,10 @@
 
   .np-label {
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 10px;
+    font-size: 12px;
     letter-spacing: 0.22em;
     text-transform: uppercase;
-    color: var(--text-dim);
+    color: var(--text);
     margin-bottom: 0.4rem;
   }
 
@@ -203,8 +203,8 @@
   }
 
   .np-artist {
-    font-size: 14px;
-    font-weight: 300;
+    font-size: 16px;
+    font-weight: 400;
     color: var(--text-muted);
     letter-spacing: 0.04em;
     white-space: nowrap;
@@ -327,7 +327,7 @@
   input[type=range]:hover::-webkit-slider-thumb { transform: scale(1.2); }
 
   .vol-val {
-    font-size: 12px;
+    font-size: 14px;
     color: var(--text-muted);
     width: 28px;
     text-align: right;
@@ -361,13 +361,13 @@
     flex-shrink: 0;
   }
   .dj-info { flex: 1; min-width: 0; }
-  .dj-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); }
-  .dj-name { font-size: 14px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dj-label { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--red); }
+  .dj-name { font-size: 16px; font-weight: 500; color: #b784a7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .dj-strip.offline .dj-name { color: var(--text-dim); font-style: italic; }
 
   .section-label {
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 10px;
+    font-size: 12px;
     letter-spacing: 0.22em;
     text-transform: uppercase;
     color: var(--text-dim);
@@ -375,6 +375,9 @@
     max-width: 420px;
     width: 100%;
   }
+
+  .section-label-requests { color: #6ec6ff; }
+  .section-label-recent { color: #4caf50; }
 
   .requests-box {
     background: var(--surface);
@@ -407,7 +410,7 @@
   }
   .req-info { flex: 1; min-width: 0; }
   .req-song {
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 500;
     white-space: nowrap;
     overflow: hidden;
@@ -415,14 +418,14 @@
     color: var(--text);
   }
   .req-meta {
-    font-size: 12px;
+    font-size: 14px;
     color: var(--text-muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
   .req-source {
-    font-size: 10px;
+    font-size: 11px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--text-dim);
@@ -433,7 +436,7 @@
     padding: 24px 16px;
     text-align: center;
     color: var(--text-dim);
-    font-size: 13px;
+    font-size: 15px;
   }
 
   .req-form {
@@ -470,7 +473,7 @@
     padding: 10px 12px;
     color: var(--text);
     font-family: 'Barlow', sans-serif;
-    font-size: 13px;
+    font-size: 15px;
     width: 100%;
     outline: none;
     transition: border-color 0.15s;
@@ -499,7 +502,7 @@
   .btn-submit:active { transform: scale(0.99); }
 
   .form-msg {
-    font-size: 12px;
+    font-size: 14px;
     margin-top: 8px;
     text-align: center;
     min-height: 18px;
@@ -508,7 +511,7 @@
   .form-msg.err { color: #ff6b6b; }
 
   .footer {
-    font-size: 11px;
+    font-size: 13px;
     color: var(--text-dim);
     letter-spacing: 0.08em;
     text-align: center;
@@ -564,11 +567,11 @@
       width:100%;
     ">
       <div style="padding:14px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between;">
-        <span style="font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:14px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text);">Weekly Schedule</span>
-        <span style="font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-dim); background:var(--surface2); border:1px solid var(--border); padding:3px 8px; border-radius:3px;">All times ET</span>
+        <span style="font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:16px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text);">Weekly Schedule</span>
+        <span style="font-size:12px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-dim); background:var(--surface2); border:1px solid var(--border); padding:3px 8px; border-radius:3px;">All times ET</span>
       </div>
       <div id="schedList"></div>
-      <div style="padding:12px 16px; border-top:1px solid var(--border); font-size:12px; color:var(--text-dim); font-style:italic; line-height:1.5;">
+      <div style="padding:12px 16px; border-top:1px solid var(--border); font-size:14px; color:var(--text-dim); font-style:italic; line-height:1.5;">
         🎵 DJ Juvi — Pink Noise fill-in DJ on Fridays & surprise days
       </div>
     </div>
@@ -622,13 +625,13 @@
   </div>
 
   <!-- Requests list -->
-  <div class="section-label">Live Requests</div>
+  <div class="section-label section-label-requests">Live Requests</div>
   <div class="requests-box" id="requestsBox">
     <div class="empty-requests" id="reqEmpty">No requests yet 🎵</div>
   </div>
 
   <!-- Recently Played -->
-  <div class="section-label">Recently Played</div>
+  <div class="section-label section-label-recent">Recently Played</div>
   <div class="requests-box" id="recentBox">
     <div class="empty-requests">Nothing played yet 🎵</div>
   </div>
@@ -960,8 +963,8 @@ function buildSchedule() {
     const dayRow = document.createElement("div");
     dayRow.style.cssText = "padding:8px 16px 4px; display:flex; align-items:center; gap:10px;";
     dayRow.innerHTML = `
-      <span style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:${isToday ? 'var(--red)' : 'var(--text-dim)'};">${day}</span>
-      ${isToday ? '<span style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--red);background:rgba(255,0,51,0.1);border:1px solid rgba(255,0,51,0.25);padding:2px 7px;border-radius:3px;">Today</span>' : ''}
+      <span style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:14px;letter-spacing:0.1em;text-transform:uppercase;color:${isToday ? 'var(--red)' : 'var(--text-dim)'};">${day}</span>
+      ${isToday ? '<span style="font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:var(--red);background:rgba(255,0,51,0.1);border:1px solid rgba(255,0,51,0.25);padding:2px 7px;border-radius:3px;">Today</span>' : ''}
     `;
     list.appendChild(dayRow);
 
@@ -969,12 +972,12 @@ function buildSchedule() {
       const row = document.createElement("div");
       row.style.cssText = `display:flex;align-items:center;gap:10px;padding:8px 16px;border-top:1px solid var(--border);background:${isToday ? 'rgba(255,0,51,0.03)' : 'transparent'};`;
       row.innerHTML = `
-        <div style="width:32px;height:32px;border-radius:50%;background:var(--surface3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;color:var(--red);flex-shrink:0;">${dj.replace("DJ ","").charAt(0)}</div>
+        <div style="width:32px;height:32px;border-radius:50%;background:var(--surface3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;color:var(--red);flex-shrink:0;">${dj.replace("DJ ","").charAt(0)}</div>
         <div style="flex:1;min-width:0;">
-          <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;color:var(--text);">${dj}</div>
-          <div style="font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${show}</div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:15px;color:var(--text);">${dj}</div>
+          <div style="font-size:13px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${show}</div>
         </div>
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;color:var(--text-muted);white-space:nowrap;text-align:right;">${time}</div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;color:var(--text-muted);white-space:nowrap;text-align:right;">${time}</div>
       `;
       list.appendChild(row);
     });
