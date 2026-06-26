@@ -215,6 +215,17 @@ def request_song():
             requests_updated = True
             force_refresh = True
 
+        # FIX: ping the current DJ via DM about this request.
+        # Flask runs in a separate thread from the asyncio event loop, so we
+        # schedule the coroutine onto the bot's loop instead of awaiting directly.
+        try:
+            asyncio.run_coroutine_threadsafe(
+                notify_dj_of_request(song=song, artist=artist, user=user, server=server),
+                client.loop
+            )
+        except Exception as e:
+            print(f"Could not schedule DJ notification: {e}")
+
         return f"""
         <h2>✅ Request submitted!</h2>
 
@@ -295,6 +306,7 @@ sp = spotipy.Spotify(
 # =========================
 
 manual_dj = None
+manual_dj_id = None  # FIX: track DJ's actual Discord user ID so we can DM them requests
 last_song = None
 recent_songs = []
 
@@ -656,12 +668,14 @@ class DJPanel(discord.ui.View):
             return
 
         global manual_dj
+        global manual_dj_id
         global last_song
 
         # FIX: defer first so Discord doesn't time out while we fetch metadata
         await interaction.response.defer(ephemeral=True)
 
         manual_dj = interaction.user.display_name
+        manual_dj_id = interaction.user.id  # FIX: store ID for DM pings
         last_song = None
 
         try:
@@ -696,9 +710,11 @@ class DJPanel(discord.ui.View):
             return
 
         global manual_dj
+        global manual_dj_id
         global last_song
 
         manual_dj = None
+        manual_dj_id = None
         last_song = None
 
         await clear_all_scrollers()
@@ -777,6 +793,41 @@ class DJPanel(discord.ui.View):
 def get_current_dj():
 
     return manual_dj
+
+
+# FIX: new helper to DM the current DJ when a song request comes in
+async def notify_dj_of_request(song, artist, user, server):
+
+    if not manual_dj_id:
+        # No DJ live right now — nothing to notify
+        return
+
+    try:
+        dj_user = client.get_user(manual_dj_id)
+
+        if dj_user is None:
+            dj_user = await client.fetch_user(manual_dj_id)
+
+        embed = discord.Embed(
+            title="🎵 New Song Request",
+            description=f"**{artist} - {song}**",
+            color=0xff0033
+        )
+
+        embed.add_field(name="Requested by", value=user, inline=True)
+        embed.add_field(name="Server", value=server, inline=True)
+
+        await dj_user.send(embed=embed)
+
+    except discord.Forbidden:
+        # DJ has DMs closed or blocked the bot
+        print(f"Could not DM DJ {manual_dj_id}: DMs closed/forbidden")
+
+    except discord.NotFound:
+        print(f"Could not DM DJ {manual_dj_id}: user not found")
+
+    except Exception as e:
+        print(f"Error DMing DJ {manual_dj_id}: {type(e).__name__}: {e}")
 
 # =========================
 # LIVE365 METADATA
@@ -1215,11 +1266,13 @@ async def dj_start(
         return
 
     global manual_dj
+    global manual_dj_id
     global last_song
 
     await interaction.response.defer(ephemeral=True)
 
     manual_dj = name
+    manual_dj_id = interaction.user.id  # FIX: store ID for DM pings
     last_song = None
 
     try:
@@ -1251,9 +1304,11 @@ async def dj_end(interaction: discord.Interaction):
         return
 
     global manual_dj
+    global manual_dj_id
     global last_song
 
     manual_dj = None
+    manual_dj_id = None
     last_song = None
 
     await clear_all_scrollers()
@@ -1329,6 +1384,14 @@ async def request_song_command(
 
         requests_updated = True
         force_refresh = True
+
+    # FIX: ping the current DJ via DM about this request
+    await notify_dj_of_request(
+        song=song,
+        artist=artist,
+        user=interaction.user.display_name,
+        server=interaction.guild.name if interaction.guild else "DM"
+    )
 
     await interaction.response.send_message(
         f"🎵 Request added: **{artist} - {song}**",
