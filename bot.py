@@ -314,6 +314,13 @@ recent_songs = []
 requests_updated = False
 force_refresh = False
 
+# Inactivity auto-logout: tracks last song-change time for the DJ session
+last_song_change_time = None   # datetime of the last song change
+dj_warning_sent = False        # True once the 25-min warning DM has been sent
+
+INACTIVITY_WARN_SECONDS  = 25 * 60   # warn DJ after 25 min of no new songs
+INACTIVITY_LOGOUT_SECONDS = 30 * 60  # log off after 30 min of no new songs
+
 # FIX #4: standardise last_messages on string keys throughout
 last_messages = {}
 
@@ -328,18 +335,34 @@ web_started = False
 # SAVE / LOAD
 # =========================
 
+# Path to persistent storage — Railway Volume must be mounted at /data
+# If /data doesn't exist (local dev), fall back to the current directory
+import pathlib
+_DATA_DIR = pathlib.Path("/data") if pathlib.Path("/data").exists() else pathlib.Path(".")
+CHANNELS_FILE = _DATA_DIR / "radio_channels.json"
+
+
 def save_channels():
-    with open("radio_channels.json", "w") as f:
-        json.dump(radio_channels, f, indent=4)
+    try:
+        with open(CHANNELS_FILE, "w") as f:
+            json.dump(radio_channels, f, indent=4)
+        print(f"Channels saved to {CHANNELS_FILE}")
+    except Exception as e:
+        print(f"ERROR saving channels: {e}")
 
 
 def load_channels():
     global radio_channels
 
     try:
-        with open("radio_channels.json", "r") as f:
+        with open(CHANNELS_FILE, "r") as f:
             radio_channels = json.load(f)
-    except:
+        print(f"Channels loaded from {CHANNELS_FILE}: {radio_channels}")
+    except FileNotFoundError:
+        print(f"No channels file found at {CHANNELS_FILE}, starting fresh")
+        radio_channels = {}
+    except Exception as e:
+        print(f"ERROR loading channels: {e}")
         radio_channels = {}
 
 # =========================
@@ -671,6 +694,8 @@ class DJPanel(discord.ui.View):
         global manual_dj
         global manual_dj_id
         global last_song
+        global last_song_change_time
+        global dj_warning_sent
 
         # FIX: defer first so Discord doesn't time out while we fetch metadata
         await interaction.response.defer(ephemeral=True)
@@ -678,6 +703,8 @@ class DJPanel(discord.ui.View):
         manual_dj = interaction.user.display_name
         manual_dj_id = interaction.user.id  # FIX: store ID for DM pings
         last_song = None
+        last_song_change_time = datetime.utcnow()
+        dj_warning_sent = False
 
         try:
             # FIX #7: use async version so get_now_playing never blocks the event loop
@@ -713,10 +740,14 @@ class DJPanel(discord.ui.View):
         global manual_dj
         global manual_dj_id
         global last_song
+        global last_song_change_time
+        global dj_warning_sent
 
         manual_dj = None
         manual_dj_id = None
         last_song = None
+        last_song_change_time = None
+        dj_warning_sent = False
 
         await clear_all_scrollers()
 
